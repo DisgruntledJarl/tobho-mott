@@ -98,20 +98,35 @@ def movie_row(item):
     }
 
 
-def main():
+def fetch_history_rows():
     load_dotenv(ENV_PATH)
     episodes = [episode_row(item) for item in fetch_all_history("episodes")]
     movies = [movie_row(item) for item in fetch_all_history("movies")]
     rows = episodes + movies
     rows.sort(key=lambda r: r["watched_at"])
+    return rows
 
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    with OUTPUT.open("w", newline="", encoding="utf-8") as f:
+
+def write_watch_history(rows, output=OUTPUT):
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
         writer.writeheader()
         writer.writerows(rows)
+    return output
 
-    print(f"Wrote {len(rows)} rows to {OUTPUT} ({len(episodes)} episodes, {len(movies)} movies)")
+
+def refresh_watch_history(output=OUTPUT):
+    rows = fetch_history_rows()
+    path = write_watch_history(rows, output)
+    return rows, path
+
+
+def main():
+    rows, path = refresh_watch_history()
+    episodes = sum(1 for r in rows if r["type"] == "episode")
+    movies = sum(1 for r in rows if r["type"] == "movie")
+    print(f"Wrote {len(rows)} rows to {path} ({episodes} episodes, {movies} movies)")
 
 
 if __name__ == "__main__":
