@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 import requests
 from dotenv import load_dotenv
 
+from fetch_history import refresh_watch_history
 from trakt_auth import refresh_access_token, save_tokens
 
 INPUT = Path("data/watch_history.csv")
@@ -385,7 +386,13 @@ def main():
     print("\nApplying changes to Trakt...")
     remove_history([row["history_id"] for row in plan])
     add_history(show_id, args.season, plan)
-    print(f"Updated {len(plan)} episode(s). Re-run fetch_history.py to refresh local data.")
+    print(f"Updated {len(plan)} episode(s).")
+
+    print("\nRefreshing local watch history...")
+    rows, path = refresh_watch_history()
+    episodes = sum(1 for r in rows if r["type"] == "episode")
+    movies = sum(1 for r in rows if r["type"] == "movie")
+    print(f"Wrote {len(rows)} rows to {path} ({episodes} episodes, {movies} movies)")
 
 
 if __name__ == "__main__":
