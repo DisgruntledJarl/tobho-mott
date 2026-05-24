@@ -1,0 +1,307 @@
+#!/usr/bin/env python3
+"""Detect suspicious bulk-import binge patterns in Trakt watch history."""
+
+import csv
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+INPUT = Path("data/watch_history.csv")
+OUTPUT = Path("data/flagged_seasons.csv")
+
+WINDOW_START = datetime(2018, 1, 1, tzinfo=timezone.utc)
+WINDOW_END = datetime(2024, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
+
+SHORT_SPAN_DAYS = 2
+SHORT_SPAN_MIN_EPS = 8
+HEAVY_BINGE_MIN_EPS = 4
+HEAVY_BINGE_HOURS = 6
+BINGE_GAP_MINUTES = 15
+OUTLIER_CLUSTER_RATIO = 0.80
+OUTLIER_CLUSTER_HOURS = 48
+OUTLIER_DISTANCE_DAYS = 30
+
+
+def parse_dt(value):
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def in_window(dt):
+    return WINDOW_START <= dt <= WINDOW_END
+
+
+def load_episodes():
+    """Load episode history from CSV file while filtering out movies"""
+    if not INPUT.exists():
+        raise SystemExit(f"Missing {INPUT}. Run fetch_history.py first.")
+    rows = []
+    with INPUT.open(newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            if row["type"] != "episode":
+                continue
+            row["history_id"] = int(row["history_id"])
+            row["show_id"] = int(row["show_id"])
+            row["season_number"] = int(row["season_number"])
+            row["episode_number"] = int(row["episode_number"])
+            row["watched_dt"] = parse_dt(row["watched_at"])
+            rows.append(row)
+    return rows
+
+
+def split_first_watch(entries):
+    entries = sorted(entries, key=lambda e: e["watched_dt"])
+    all_episodes = {e["episode_number"] for e in entries}
+    seen = set()
+    first_watch = []
+    rewatches = []
+    complete = False
+
+    for entry in entries:
+        if complete:
+            rewatches.append(entry)
+            continue
+        first_watch.append(entry)
+        seen.add(entry["episode_number"])
+        if seen >= all_episodes:
+            complete = True
+
+    return first_watch, rewatches
+
+
+def span_days(start_dt, end_dt):
+    return (end_dt.date() - start_dt.date()).days
+
+
+def max_binge_block_hours(entries):
+    if not entries:
+        return 0.0
+    sorted_entries = sorted(entries, key=lambda e: e["watched_dt"])
+    max_block = 1
+    block_start = 0
+
+    for i in range(1, len(sorted_entries)):
+        gap = sorted_entries[i]["watched_dt"] - sorted_entries[i - 1]["watched_dt"]
+        if gap <= timedelta(minutes=BINGE_GAP_MINUTES):
+            continue
+        block_len = i - block_start
+        max_block = max(max_block, block_len)
+        block_start = i
+
+    max_block = max(max_block, len(sorted_entries) - block_start)
+    if max_block <= 1:
+        return 0.0
+
+    # Approximate block duration from first to last watch in longest block.
+    best_hours = 0.0
+    block_start = 0
+    for i in range(1, len(sorted_entries)):
+        gap = sorted_entries[i]["watched_dt"] - sorted_entries[i - 1]["watched_dt"]
+        if gap <= timedelta(minutes=BINGE_GAP_MINUTES):
+            continue
+        block = sorted_entries[block_start:i]
+        if len(block) >= HEAVY_BINGE_MIN_EPS:
+            hours = (block[-1]["watched_dt"] - block[0]["watched_dt"]).total_seconds() / 3600
+            best_hours = max(best_hours, hours)
+        block_start = i
+
+    block = sorted_entries[block_start:]
+    if len(block) >= HEAVY_BINGE_MIN_EPS:
+        hours = (block[-1]["watched_dt"] - block[0]["watched_dt"]).total_seconds() / 3600
+        best_hours = max(best_hours, hours)
+
+    return best_hours
+
+
+def has_heavy_binge(entries):
+    if len(entries) < HEAVY_BINGE_MIN_EPS:
+        return False
+    sorted_entries = sorted(entries, key=lambda e: e["watched_dt"])
+    block_start = 0
+    for i in range(1, len(sorted_entries)):
+        gap = sorted_entries[i]["watched_dt"] - sorted_entries[i - 1]["watched_dt"]
+        if gap <= timedelta(minutes=BINGE_GAP_MINUTES): # Are episodes watched within 15 minutes of each other?
+            continue
+        block = sorted_entries[block_start:i]
+        if len(block) >= HEAVY_BINGE_MIN_EPS: 
+            hours = (block[-1]["watched_dt"] - block[0]["watched_dt"]).total_seconds() / 3600
+            if hours <= HEAVY_BINGE_HOURS: # Is the binge less than 6 hours?
+                return True
+        block_start = i
+
+    block = sorted_entries[block_start:]
+    if len(block) >= HEAVY_BINGE_MIN_EPS:
+        hours = (block[-1]["watched_dt"] - block[0]["watched_dt"]).total_seconds() / 3600
+        if hours <= HEAVY_BINGE_HOURS:
+            return True
+    return False
+
+
+def has_outlier_cluster(entries):
+    if len(entries) < 2:
+        return False
+    sorted_entries = sorted(entries, key=lambda e: e["watched_dt"])
+    window = timedelta(hours=OUTLIER_CLUSTER_HOURS)
+    min_in_cluster = max(1, int(len(sorted_entries) * OUTLIER_CLUSTER_RATIO + 0.999))
+
+    best_cluster = set()
+    for anchor in sorted_entries:
+        anchor_dt = anchor["watched_dt"]
+        cluster = {
+            e["history_id"]
+            for e in sorted_entries
+            if anchor_dt <= e["watched_dt"] <= anchor_dt + window
+        }
+        if len(cluster) > len(best_cluster):
+            best_cluster = cluster
+
+    if len(best_cluster) < min_in_cluster:
+        return False
+
+    outliers = [e for e in sorted_entries if e["history_id"] not in best_cluster]
+    if not outliers:
+        return False
+
+    cluster_entries = [e for e in sorted_entries if e["history_id"] in best_cluster]
+    cluster_start = min(e["watched_dt"] for e in cluster_entries)
+    cluster_end = max(e["watched_dt"] for e in cluster_entries)
+    min_distance = timedelta(days=OUTLIER_DISTANCE_DAYS)
+
+    for outlier in outliers:
+        dt = outlier["watched_dt"]
+        if dt < cluster_start:
+            if cluster_start - dt >= min_distance:
+                return True
+        elif dt > cluster_end:
+            if dt - cluster_end >= min_distance:
+                return True
+        else:
+            # Inside cluster time range but not counted in best 48h window — treat as outlier.
+            return True
+
+    return False
+
+
+def detect_flags(entries):
+    flags = []
+
+    # If season watched in less than 2 days, flag it as short span
+    if len(entries) >= SHORT_SPAN_MIN_EPS:
+        start = min(e["watched_dt"] for e in entries)
+        end = max(e["watched_dt"] for e in entries)
+        if span_days(start, end) <= SHORT_SPAN_DAYS:
+            flags.append("short_span")
+
+    if has_heavy_binge(entries):
+        flags.append("heavy_binge")
+
+    if has_outlier_cluster(entries):
+        flags.append("outlier_cluster")
+
+    return flags
+
+
+def analyze_season(entries):
+    first_watch, rewatches = split_first_watch(entries)
+    window_first = [e for e in first_watch if in_window(e["watched_dt"])] # Filter out episodes outside the window
+
+    if not window_first:
+        return None
+
+    # Calculate the start and end dates of the season
+    start = min(e["watched_dt"] for e in window_first)
+    end = max(e["watched_dt"] for e in window_first)
+    
+    flags = detect_flags(window_first)
+
+    return {
+        "show_id": entries[0]["show_id"],
+        "show_name": entries[0]["show_name"],
+        "season_number": entries[0]["season_number"],
+        "episode_count": len(window_first),
+        "start_date": start.date().isoformat(),
+        "end_date": end.date().isoformat(),
+        "span_days": span_days(start, end),
+        "max_binge_block_hours": round(max_binge_block_hours(window_first), 1),
+        "rewatch_count": len(rewatches),
+        "flags": flags,
+        "history_ids": [e["history_id"] for e in window_first],
+        "flagged": bool(flags)
+    }
+
+
+def print_report(results):
+    flagged = [r for r in results if r["flagged"]]
+    print(f"\nAnalyzed {len(results)} season(s) with first-watch activity in 2018–2024.")
+    print(f"Flagged {len(flagged)} suspicious season(s).\n")
+
+    by_show = defaultdict(list)
+    for result in sorted(results, key=lambda r: (r["show_name"].lower(), r["season_number"])):
+        by_show[result["show_name"]].append(result)
+
+    for show_name, seasons in by_show.items():
+        print(show_name)
+        for season in seasons:
+            status = "FLAGGED" if season["flagged"] else "ok"
+            flags = ",".join(season["flags"]) if season["flags"] else "-"
+            print(
+                f"  S{season['season_number']:02d}  {season['episode_count']} eps  "
+                f"{season['start_date']} → {season['end_date']}  "
+                f"({season['span_days']} days, max binge {season['max_binge_block_hours']}h)  "
+                f"rewatches={season['rewatch_count']}  [{status}: {flags}]"
+            )
+        print()
+
+
+def main():
+    episodes = load_episodes()
+    grouped = defaultdict(list)
+    for episode in episodes:
+        grouped[(episode["show_id"], episode["season_number"])].append(episode)
+
+    results = []
+    for entries in grouped.values():
+        result = analyze_season(entries)
+        if result:
+            results.append(result)
+
+    print_report(results)
+
+    flagged_rows = [r for r in results if r["flagged"]]
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    with OUTPUT.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "show_id",
+                "show_name",
+                "season_number",
+                "episode_count",
+                "start_date",
+                "end_date",
+                "span_days",
+                "max_binge_block_hours",
+                "rewatch_count",
+                "flags",
+                "history_ids",
+            ],
+        )
+        writer.writeheader()
+        for row in flagged_rows:
+            writer.writerow(
+                {
+                    **{k: row[k] for k in writer.fieldnames if k not in ("flags", "history_ids")},
+                    "flags": ",".join(row["flags"]),
+                    "history_ids": ",".join(str(i) for i in row["history_ids"]),
+                }
+            )
+
+    print(f"Wrote {len(flagged_rows)} flagged season(s) to {OUTPUT}")
+
+
+if __name__ == "__main__":
+    main()
