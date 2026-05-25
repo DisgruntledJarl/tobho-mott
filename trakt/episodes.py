@@ -39,3 +39,17 @@ def fetch_episode_durations(show_id, season_number):
         context=f"fetching episode durations for show {show_id} season {season_number}",
     )
     return {episode["number"]: episode.get("runtime") for episode in response.json()}
+
+
+def fetch_movie_runtime(movie_id):
+    """Return runtime in minutes (or ``None``) for a movie.
+
+    Uses the ``runtime`` field from ``GET /movies/{id}?extended=full``.
+    Returns ``None`` when Trakt has no runtime data for the movie.
+    """
+    response = trakt_get(
+        f"/movies/{movie_id}",
+        {"extended": "full"},
+        context=f"fetching runtime for movie {movie_id}",
+    )
+    return response.json().get("runtime")
