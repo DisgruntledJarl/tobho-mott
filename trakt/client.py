@@ -12,9 +12,7 @@ from zoneinfo import ZoneInfo
 import requests
 from dotenv import load_dotenv, set_key
 
-# trakt-scripts/ (parent of the trakt package)
-REPO_ROOT = Path(__file__).resolve().parent.parent
-ENV_PATH = REPO_ROOT / ".env"
+ENV_PATH = Path(".env")
 
 BASE = "https://api.trakt.tv"
 IST = ZoneInfo("Asia/Kolkata")

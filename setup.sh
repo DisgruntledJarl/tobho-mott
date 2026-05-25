@@ -42,4 +42,4 @@ else
 fi
 
 echo ""
-echo "Trakt setup complete. Fetch watch history with: python fetch_history.py"
+echo "Setup complete."

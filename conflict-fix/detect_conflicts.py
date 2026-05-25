@@ -6,7 +6,7 @@ import csv
 from datetime import timedelta
 from pathlib import Path
 
-from trakt.csv import DEFAULT_CSV, load_rows
+from trakt.csv_to_python import DEFAULT_CSV, load_rows
 
 EPISODE_DURATION = timedelta(hours=1)
 MOVIE_DURATION = timedelta(hours=3)
