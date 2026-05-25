@@ -31,14 +31,12 @@ def _fetch_pages(history_type):
         response = trakt_get(
             f"/sync/history/{history_type}",
             {"page": page, "limit": 1000},
-            context=f"fetching {history_type} history page {page}",
-            recovery="Re-run fetch_history.py after the rate limit clears.",
         )
         items.extend(response.json())
         page_count = int(response.headers.get("X-Pagination-Page-Count", 1))
         if page >= page_count:
             break
-        maybe_pause_for_get_pagination(response, page)
+        maybe_pause_for_get_pagination(page)
         page += 1
     return items
 

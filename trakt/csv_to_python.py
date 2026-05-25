@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 
 DEFAULT_CSV = Path("data/watch_history.csv")
 
-# Helper function to parse the watched_at timestamp into a datetime object
 def _parse_dt(value):
     if value.endswith("Z"):
         value = value[:-1] + "+00:00"
@@ -16,7 +15,6 @@ def _parse_dt(value):
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
-# Load all rows (episodes + movies) from the watch-history CSV
 def load_rows(path=DEFAULT_CSV):
     path = Path(path)
     if not path.exists():
