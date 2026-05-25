@@ -294,7 +294,7 @@ def analyze_season(entries, exclusions=None):
 
 
 def print_report(results):
-    flagged = [r for r in results if r["flagged"]]
+    flagged = [r for r in results if r["flagged"] and not r["excluded"]]
     print(f"\nAnalyzed {len(results)} season(s) with first-watch activity in 2018–2024.")
     print(f"Flagged {len(flagged)} suspicious season(s).\n")
 
@@ -305,13 +305,19 @@ def print_report(results):
     for show_name, seasons in by_show.items():
         print(show_name)
         for season in seasons:
-            status = "FLAGGED" if season["flagged"] else "ok"
-            flags = ",".join(season["flags"]) if season["flags"] else "-"
+            if season["excluded"]:
+                reason = season["exclusion_reason"] or "-"
+                status_part = f"excluded: {reason}"
+            elif season["flagged"]:
+                flags = ",".join(season["flags"])
+                status_part = f"FLAGGED: {flags}"
+            else:
+                status_part = "ok: -"
             print(
                 f"  S{season['season_number']:02d}  {season['episode_count']} eps  "
                 f"{season['start_date']} → {season['end_date']}  "
                 f"({season['span_days']} days, max binge {season['max_binge_block_hours']}h)  "
-                f"rewatches={season['rewatch_count']}  [{status}: {flags}]"
+                f"rewatches={season['rewatch_count']}  [{status_part}]"
             )
         print()
 
@@ -331,7 +337,7 @@ def main():
 
     print_report(results)
 
-    flagged_rows = [r for r in results if r["flagged"]]
+    flagged_rows = [r for r in results if r["flagged"] and not r["excluded"]]
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
