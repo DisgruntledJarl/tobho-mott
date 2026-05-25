@@ -4,15 +4,12 @@
 import argparse
 import random
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from trakt.cli import prompt_custom_dates, prompt_yes_no
-from trakt.csv import find_show, load_rows, split_first_watch
+from trakt.csv import DEFAULT_CSV, find_show, load_rows, split_first_watch
 from trakt.episodes import fetch_season_premiere
 from trakt.schedule import build_blocked_intervals, schedule_episodes
 from trakt.sync import apply_plan, apply_state_path, load_apply_state, write_preview
-
-INPUT = Path("data/watch_history.csv")
 
 WINDOW_START = datetime(2018, 1, 1, tzinfo=timezone.utc)
 WINDOW_END = datetime(2024, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
@@ -121,7 +118,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    rows = load_rows(INPUT)
+    rows = load_rows(DEFAULT_CSV)
     show_id, to_fix, blocked, show_name = prepare_season(
         rows, args.show, args.show_id, args.season
     )
