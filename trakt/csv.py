@@ -3,9 +3,10 @@
 import csv
 from pathlib import Path
 
+from trakt.client import REPO_ROOT
 from trakt.dt import parse_dt
 
-DEFAULT_CSV = Path("data/watch_history.csv")
+DEFAULT_CSV = REPO_ROOT / "data" / "watch_history.csv"
 
 
 def load_rows(path=DEFAULT_CSV):
