@@ -1,6 +1,6 @@
 # trakt-scripts
 
-Personal CLI tools for managing Trakt watch history. Shared `trakt/` package lives at the repo root; individual tools live in subfolders.
+Personal CLI tools for managing Trakt watch history. Shared `trakt/` package and CLI scripts live at the repo root.
 
 ## Setup
 
@@ -52,16 +52,15 @@ python fetch_history.py
 
 Writes `data/watch_history.csv` (episodes and movies with runtimes).
 
-## conflict-fix
+## detect_conflicts
 
 Detects overlapping watch intervals in your Trakt history — pairs of entries where the computed watch windows physically overlap, indicating incorrect timestamps.
 
 ```bash
-cd conflict-fix
 python detect_conflicts.py
 ```
 
-Prints a summary and writes flagged pairs to `conflict-fix/data/flagged_conflicts.csv`.
+Prints a summary and writes flagged pairs to `data/flagged_conflicts.csv`.
 
 **Options:**
 
@@ -69,6 +68,17 @@ Prints a summary and writes flagged pairs to `conflict-fix/data/flagged_conflict
 | --- | --- |
 | `--input PATH` | Use a different watch history CSV (default: `data/watch_history.csv`) |
 
-## Coming soon
+## detect_order
 
-**season-order-fix** — detect and correct episodes recorded out of watch order (e.g. an episode from S2 logged before S1 is complete), with per-show exclusions.
+Detects episodes recorded out of watch order — first-watch entries where a later episode number was logged before an earlier one in the same season.
+
+```bash
+python detect_order.py
+```
+
+**Options:**
+
+| Flag | Purpose |
+| --- | --- |
+| `--input PATH` | Use a different watch history CSV (default: `data/watch_history.csv`) |
+| `--exclude SHOW_ID:SEASON:EPISODE` | Skip a specific episode from order checks (repeatable) |
