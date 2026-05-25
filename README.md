@@ -62,12 +62,6 @@ python detect_conflicts.py
 
 Prints a summary and writes flagged pairs to `data/flagged_conflicts.csv`.
 
-**Options:**
-
-| Flag | Purpose |
-| --- | --- |
-| `--input PATH` | Use a different watch history CSV (default: `data/watch_history.csv`) |
-
 ## detect_order
 
 Detects episodes recorded out of watch order — first-watch entries where a later episode number was logged before an earlier one in the same season.

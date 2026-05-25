@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 """Detect overlapping watch intervals in Trakt history."""
 
-import argparse
 import csv
 from datetime import timedelta
 from pathlib import Path
 
-from trakt.csv_to_python import DEFAULT_CSV, load_rows
+from trakt.csv_to_python import load_rows
 
 EPISODE_DURATION = timedelta(hours=1)
 MOVIE_DURATION = timedelta(hours=3)
@@ -119,11 +118,7 @@ def print_summary(conflicts):
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=DEFAULT_CSV, help="Watch history CSV")
-    args = parser.parse_args()
-
-    conflicts = detect_conflicts(load_rows(args.input))
+    conflicts = detect_conflicts(load_rows())
     print_summary(conflicts)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
