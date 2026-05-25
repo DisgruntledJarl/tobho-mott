@@ -347,15 +347,7 @@ def parse_args():
     parser.add_argument("--show", help="Show title (case-insensitive exact match)")
     parser.add_argument("--show-id", type=int, help="Trakt show ID")
     parser.add_argument("--season", type=int, required=True)
-    parser.add_argument("--start", help="Start date in IST (YYYY-MM-DD)")
-    parser.add_argument("--end", help="End date in IST (YYYY-MM-DD)")
-    parser.add_argument(
-        "--around-release",
-        action="store_true",
-        help="Auto-compute date range from Trakt season premiere (mutually exclusive with --start/--end)",
-    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducible schedules")
-    parser.add_argument("--apply", action="store_true", help="Write changes to Trakt (default is dry-run)")
     args = parser.parse_args()
 
     if not args.show and args.show_id is None:
@@ -363,79 +355,112 @@ def parse_args():
     if args.show and args.show_id is not None:
         parser.error("Use only one of --show or --show-id.")
 
-    manual = args.start is not None or args.end is not None
-    if args.around_release and manual:
-        parser.error("Use either --around-release or --start/--end, not both.")
-    if not args.around_release and not (args.start and args.end):
-        parser.error("Provide --start and --end, or use --around-release.")
-    if manual and not (args.start and args.end):
-        parser.error("Provide both --start and --end.")
-
     return args
 
 
-def resolve_date_range(show_id, season_number, args):
-    if args.around_release:
-        premiere_date = fetch_season_premiere(show_id, season_number)
-        if premiere_date is None:
-            raise SystemExit(
-                f"No first_aired date found for show_id={show_id} season={season_number}. "
-                "Use manual --start and --end instead."
-            )
-        start_date, end_date = release_date_range(premiere_date, args.seed)
-        print(f"Season premiere: {premiere_date}")
-        print(f"Computed date range (IST): {start_date} → {end_date}")
-        return start_date, end_date
-
-    start_date = datetime.strptime(args.start, "%Y-%m-%d").date()
-    end_date = datetime.strptime(args.end, "%Y-%m-%d").date()
-    if end_date < start_date:
-        raise SystemExit("--end must be on or after --start.")
-    return start_date, end_date
-
-
-def main():
-    args = parse_args()
-    rows = load_rows()
-    show_id = find_show(rows, show_name=args.show, show_id=args.show_id)
-    start_date, end_date = resolve_date_range(show_id, args.season, args)
-
+def prepare_season(rows, show_name, show_id, season_number):
+    show_id = find_show(rows, show_name=show_name, show_id=show_id)
     season_entries = [
         r
         for r in rows
-        if r["type"] == "episode" and r["show_id"] == show_id and r["season_number"] == args.season
+        if r["type"] == "episode" and r["show_id"] == show_id and r["season_number"] == season_number
     ]
     if not season_entries:
-        raise SystemExit(f"No episode history found for show_id={show_id} season={args.season}.")
+        raise SystemExit(f"No episode history found for show_id={show_id} season={season_number}.")
 
     first_watch = split_first_watch(season_entries)
     to_fix = [e for e in first_watch if in_window(e["watched_dt"])]
     if not to_fix:
         raise SystemExit("No first-watch entries in 2018–2024 for this season.")
 
+    exclude_ids = {e["history_id"] for e in to_fix}
+    blocked = build_blocked_intervals(rows, exclude_ids)
+    show_name = to_fix[0]["show_name"]
+    return show_id, to_fix, blocked, show_name
 
-    exclude_ids = {e["history_id"] for e in to_fix} # Exclude episodes that are already scheduled from the blocked intervals
-    blocked = build_blocked_intervals(rows, exclude_ids) 
-    plan = schedule_episodes(to_fix, start_date, end_date, blocked, args.seed)
-    preview_path = write_preview(plan, show_id, args.season)
 
+def print_plan(plan, start_date, end_date, show_id, season_number, *, premiere=None, range_label=None):
+    preview_path = write_preview(plan, show_id, season_number)
     show_name = plan[0]["show_name"]
-    print(f"{show_name} S{args.season:02d}: scheduling {len(plan)} first-watch episode(s)")
-    print(f"Date range (IST): {start_date} → {end_date}")
+    print(f"\n{show_name} S{season_number:02d}: scheduling {len(plan)} first-watch episode(s)")
+    if premiere is not None:
+        print(f"Season premiere: {premiere}")
+    if range_label:
+        print(f"{range_label} (IST): {start_date} → {end_date}")
+    else:
+        print(f"Date range (IST): {start_date} → {end_date}")
     print(f"Preview written to {preview_path}")
-
     for row in plan:
         print(
             f"  E{row['episode_number']:02d}  {row['old_watched_at']}  ->  {row['new_watched_at']}"
         )
+    return preview_path
 
-    if not args.apply:
-        print("\nDry run only. Re-run with --apply to update Trakt.")
-        return
 
-    print("\nApplying changes to Trakt...")
+def prompt_choice():
+    print("\nHow do you want to proceed?")
+    print("  [1] Apply release-date plan (shown above)")
+    print("  [2] Enter custom start/end dates")
+    print("  [0] Cancel")
+    valid = {"0", "1", "2"}
+    while True:
+        try:
+            choice = input("> ").strip()
+        except EOFError:
+            print("\nCancelled.")
+            return "0"
+        if choice in valid:
+            return choice
+        print("Enter 0, 1, or 2.")
+
+
+def prompt_date(label):
+    while True:
+        try:
+            value = input(f"{label} (IST, YYYY-MM-DD): ").strip()
+        except EOFError:
+            raise SystemExit("\nCancelled.")
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            print("Invalid date. Use YYYY-MM-DD.")
+
+
+def prompt_yes_no(prompt, default=True):
+    suffix = "[Y/n]" if default else "[y/N]"
+    while True:
+        try:
+            answer = input(f"{prompt} {suffix}: ").strip().lower()
+        except EOFError:
+            print("\nCancelled.")
+            return False
+        if not answer:
+            return default
+        if answer in {"y", "yes"}:
+            return True
+        if answer in {"n", "no"}:
+            return False
+        print("Enter y or n.")
+
+
+def prompt_custom_dates(to_fix, blocked, seed, show_id, season_number):
+    start_date = prompt_date("Start date")
+    end_date = prompt_date("End date")
+    if end_date < start_date:
+        raise SystemExit("End date must be on or after start date.")
+
+    plan = schedule_episodes(to_fix, start_date, end_date, blocked, seed)
+    print_plan(plan, start_date, end_date, show_id, season_number, range_label="Custom date range")
+    if prompt_yes_no("Apply this plan to Trakt?"):
+        apply_plan(plan, show_id, season_number)
+    else:
+        print("No changes applied.")
+
+
+def apply_plan(plan, show_id, season_number):
+    print(f"\nApplying {len(plan)} episode(s) to Trakt...")
     remove_history([row["history_id"] for row in plan])
-    add_history(show_id, args.season, plan)
+    add_history(show_id, season_number, plan)
     print(f"Updated {len(plan)} episode(s).")
 
     print("\nRefreshing local watch history...")
@@ -443,6 +468,43 @@ def main():
     episodes = sum(1 for r in rows if r["type"] == "episode")
     movies = sum(1 for r in rows if r["type"] == "movie")
     print(f"Wrote {len(rows)} rows to {path} ({episodes} episodes, {movies} movies)")
+
+
+def main():
+    args = parse_args()
+    rows = load_rows()
+    show_id, to_fix, blocked, show_name = prepare_season(rows, args.show, args.show_id, args.season)
+
+    premiere = fetch_season_premiere(show_id, args.season)
+    if premiere is None:
+        print(
+            f"No first_aired date found for {show_name} S{args.season:02d}. "
+            "Enter custom start/end dates instead."
+        )
+        prompt_custom_dates(to_fix, blocked, args.seed, show_id, args.season)
+        return
+
+    start_date, end_date = release_date_range(premiere, args.seed)
+    plan = schedule_episodes(to_fix, start_date, end_date, blocked, args.seed)
+    print_plan(
+        plan,
+        start_date,
+        end_date,
+        show_id,
+        args.season,
+        premiere=premiere,
+        range_label="Computed date range",
+    )
+
+    choice = prompt_choice()
+    if choice == "0":
+        print("Cancelled.")
+        return
+    if choice == "1":
+        apply_plan(plan, show_id, args.season)
+        return
+
+    prompt_custom_dates(to_fix, blocked, args.seed, show_id, args.season)
 
 
 if __name__ == "__main__":
