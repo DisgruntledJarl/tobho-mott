@@ -11,11 +11,14 @@ cd season-bulk-fix
 ./setup.sh
 ```
 
+Once you're done, you can skip to [fixing seasons](#3-fix-one-season)
+
 The script installs the repo (`pip install -e ..`), copies `.env.example` to the repo-root `.env` if missing, runs `trakt-auth` when no access token is set, fetches watch history, and generates the flagged-seasons report.
 
 On a fresh clone it creates `.env` and exits — edit the repo-root `.env` with your Trakt app credentials, then run `./setup.sh` again to finish.
 
 Re-runs skip `trakt-auth` when tokens are already present but still refresh history and the report.
+
 
 ## Trakt setup
 
