@@ -3,9 +3,9 @@
 import csv
 from pathlib import Path
 
+from trakt.client import REPO_ROOT
 from trakt.dt import parse_dt
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CSV = REPO_ROOT / "data" / "watch_history.csv"
 
 

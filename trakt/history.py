@@ -4,10 +4,9 @@ import csv
 import time
 from pathlib import Path
 
-from trakt.client import GET_PAGE_PAUSE, maybe_pause_for_get_pagination, trakt_get
+from trakt.client import GET_PAGE_PAUSE, REPO_ROOT, maybe_pause_for_get_pagination, trakt_get
 from trakt.episodes import fetch_episode_durations, fetch_movie_runtime
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUTPUT = REPO_ROOT / "data" / "watch_history.csv"
 
 _FIELDNAMES = [
