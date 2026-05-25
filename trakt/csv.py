@@ -5,7 +5,8 @@ from pathlib import Path
 
 from trakt.dt import parse_dt
 
-DEFAULT_CSV = Path("data/watch_history.csv")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CSV = REPO_ROOT / "data" / "watch_history.csv"
 
 
 def load_rows(path=DEFAULT_CSV):
