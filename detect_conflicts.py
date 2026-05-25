@@ -25,7 +25,6 @@ _FIELDNAMES = [
     "runtime_b",
     "computed_start_a",
     "computed_start_b",
-    "overlap_minutes",
 ]
 
 
@@ -52,33 +51,30 @@ def row_title(row):
 def detect_conflicts(rows):
     """Return conflict dicts for every pair of overlapping watch intervals.
 
-    Each dict has keys: row_a, row_b, overlap_minutes.
+    Each dict has keys: row_a, row_b.
     Uses runtime from the row when present; falls back to MOVIE_DURATION /
     EPISODE_DURATION.
 
     3-way (or N-way) pile-ups produce one dict per overlapping pair, so a
     3-way conflict yields three dicts: (A,B), (A,C), (B,C).
     """
+
+    # Get start, end time and store intervals as (start, end, row)
     intervals = sorted(
         ((*row_interval(row), row) for row in rows),
         key=lambda item: item[0],
     )
     conflicts = []
+
+    """The logic is to use a sweep line algorithm. We have a sorted list of intervals by start time. 
+    We compare the each row with the subsequent rows but not all rows.
+    If the next row starts before the current row ends, we break. Everything before that is compared. 
+    """
     for i, (a_start, a_end, row_a) in enumerate(intervals):
-        for b_start, b_end, row_b in intervals[i + 1 :]:
+        for b_start, _, row_b in intervals[i + 1 :]:
             if b_start >= a_end:
                 break
-            overlap_min = round(
-                (min(a_end, b_end) - max(a_start, b_start)).total_seconds() / 60,
-                1,
-            )
-            conflicts.append(
-                {
-                    "row_a": row_a,
-                    "row_b": row_b,
-                    "overlap_minutes": overlap_min,
-                }
-            )
+            conflicts.append({"row_a": row_a, "row_b": row_b})
     return conflicts
 
 
@@ -100,21 +96,11 @@ def conflict_to_csv_row(conflict):
         "runtime_b": int(row_duration(row_b).total_seconds() // 60),
         "computed_start_a": a_start.isoformat(),
         "computed_start_b": b_start.isoformat(),
-        "overlap_minutes": conflict["overlap_minutes"],
     }
 
 
 def print_summary(conflicts):
     print(f"Found {len(conflicts)} overlapping pair(s).")
-    if not conflicts:
-        return
-
-    worst = max(conflicts, key=lambda c: c["overlap_minutes"])
-    print(
-        "Worst overlap: "
-        f"{worst['overlap_minutes']} min — "
-        f"{row_title(worst['row_a'])} vs {row_title(worst['row_b'])}"
-    )
 
 
 def main():
