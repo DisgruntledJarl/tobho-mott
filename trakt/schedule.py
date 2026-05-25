@@ -27,15 +27,21 @@ def intervals_overlap(a_start, a_end, b_start, b_end):
 def build_blocked_intervals(rows, exclude_history_ids):
     """Build ``(start, end)`` clash intervals from all history except excluded IDs.
 
-    Episodes occupy ``EPISODE_DURATION``; movies occupy ``MOVIE_DURATION``.
-    The excluded IDs are the entries being rescheduled — they must not block
-    themselves.
+    Uses each row's ``runtime`` (minutes) when present; otherwise episodes use
+    ``EPISODE_DURATION`` and movies use ``MOVIE_DURATION``. The excluded IDs are
+    the entries being rescheduled — they must not block themselves.
     """
     blocked = []
     for row in rows:
         if row["history_id"] in exclude_history_ids:
             continue
-        duration = MOVIE_DURATION if row["type"] == "movie" else EPISODE_DURATION
+        raw_rt = row.get("runtime")
+        if raw_rt:
+            duration = timedelta(minutes=raw_rt)
+        elif row["type"] == "movie":
+            duration = MOVIE_DURATION
+        else:
+            duration = EPISODE_DURATION
         start, end = watch_interval(row["watched_dt"], duration)
         blocked.append((start, end))
     return blocked
