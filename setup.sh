@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
 ENV_FILE="$REPO_ROOT/.env"
 ENV_EXAMPLE="$REPO_ROOT/.env.example"
 
@@ -41,13 +41,5 @@ else
   echo "TRAKT_ACCESS_TOKEN already set; skipping trakt-auth."
 fi
 
-cd "$SCRIPT_DIR"
-
-echo "Fetching watch history..."
-python fetch_history.py
-
-echo "Generating flagged seasons report..."
-python report.py
-
 echo ""
-echo "Setup complete. Review data/flagged_seasons.csv, then fix seasons with fix_season.py."
+echo "Trakt setup complete. Fetch watch history with: python fetch_history.py"
