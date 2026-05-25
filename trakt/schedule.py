@@ -89,9 +89,9 @@ def assign_days(start_date, end_date, count, rng):
     return days
 
 
-def _has_clash(completion_time, blocked, scheduled):
+def _has_clash(completion_time, blocked, scheduled, duration=EPISODE_DURATION):
     """Return ``True`` when placing an episode at ``completion_time`` overlaps any interval."""
-    start, end = watch_interval(completion_time)
+    start, end = watch_interval(completion_time, duration)
     for other_start, other_end in blocked + scheduled:
         if intervals_overlap(start, end, other_start, other_end):
             return True
@@ -102,7 +102,7 @@ def _has_clash(completion_time, blocked, scheduled):
     return False
 
 
-def find_completion_time(day, blocked, scheduled, rng, earliest=None):
+def find_completion_time(day, blocked, scheduled, rng, earliest=None, duration=EPISODE_DURATION):
     """Find a clash-free completion timestamp on or near ``day``.
 
     Attempts random evening picks first (40 tries on target day), then
@@ -114,7 +114,7 @@ def find_completion_time(day, blocked, scheduled, rng, earliest=None):
     def valid(candidate):
         if earliest is not None and candidate < earliest:
             return False
-        return not _has_clash(candidate, blocked, scheduled)
+        return not _has_clash(candidate, blocked, scheduled, duration)
 
     for _ in range(40):
         candidate = pick_evening_time(day, rng)
@@ -176,8 +176,12 @@ def schedule_episodes(entries, start_date, end_date, blocked, seed):
 
     earliest = None
     for entry, day in zip(entries, days):
-        completion = find_completion_time(day, blocked, scheduled, rng, earliest=earliest)
-        start, end = watch_interval(completion)
+        raw_rt = entry.get("runtime")
+        duration = timedelta(minutes=raw_rt) if raw_rt else EPISODE_DURATION
+        completion = find_completion_time(
+            day, blocked, scheduled, rng, earliest=earliest, duration=duration
+        )
+        start, end = watch_interval(completion, duration)
         scheduled.append((start, end))
         earliest = completion + MIN_GAP
         plan.append(
