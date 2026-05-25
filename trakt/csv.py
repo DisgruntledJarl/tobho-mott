@@ -15,6 +15,7 @@ def load_rows(path=DEFAULT_CSV):
       - ``watched_dt``: UTC-aware datetime
       - ``history_id``: int
       - ``show_id``, ``season_number``, ``episode_number``: int (episodes only)
+      - ``runtime``: int minutes, or None if missing
     """
     path = Path(path)
     if not path.exists():
@@ -28,6 +29,8 @@ def load_rows(path=DEFAULT_CSV):
                 row["show_id"] = int(row["show_id"])
                 row["season_number"] = int(row["season_number"])
                 row["episode_number"] = int(row["episode_number"])
+            raw = row.get("runtime", "")
+            row["runtime"] = int(raw) if raw else None
             rows.append(row)
     return rows
 
@@ -35,7 +38,7 @@ def load_rows(path=DEFAULT_CSV):
 def load_episodes(path=DEFAULT_CSV):
     """Load episode-only rows from the watch-history CSV.
 
-    Same parsed fields as ``load_rows`` but movies are excluded.
+    Same parsed fields as ``load_rows`` (including ``runtime``) but movies are excluded.
     """
     path = Path(path)
     if not path.exists():
@@ -50,6 +53,8 @@ def load_episodes(path=DEFAULT_CSV):
             row["season_number"] = int(row["season_number"])
             row["episode_number"] = int(row["episode_number"])
             row["watched_dt"] = parse_dt(row["watched_at"])
+            raw = row.get("runtime", "")
+            row["runtime"] = int(raw) if raw else None
             rows.append(row)
     return rows
 
