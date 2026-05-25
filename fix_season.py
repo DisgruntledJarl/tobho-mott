@@ -595,6 +595,10 @@ def apply_plan(
     else:
         print("\nRun fetch_history.py to refresh local watch history.")
 
+    if preview_path.exists():
+        preview_path.unlink()
+        print(f"Removed preview file {preview_path}.")
+
 
 def write_preview(plan, show_id, season_number):
     path = Path(f"data/fix_preview_{show_id}_s{season_number}.csv")
