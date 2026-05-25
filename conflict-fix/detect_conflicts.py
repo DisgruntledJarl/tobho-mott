@@ -7,12 +7,19 @@ from datetime import timedelta
 from pathlib import Path
 
 from trakt.csv import DEFAULT_CSV, load_rows
-from trakt.schedule import (
-    EPISODE_DURATION,
-    MOVIE_DURATION,
-    intervals_overlap,
-    watch_interval,
-)
+
+EPISODE_DURATION = timedelta(hours=1)
+MOVIE_DURATION = timedelta(hours=3)
+
+
+def watch_interval(watched_at, duration=EPISODE_DURATION):
+    """Return ``(start, end)`` for a watch event that ends at ``watched_at``."""
+    return watched_at - duration, watched_at
+
+
+def intervals_overlap(a_start, a_end, b_start, b_end):
+    """Return ``True`` when two intervals share any time."""
+    return a_start < b_end and b_start < a_end
 
 OUTPUT = Path(__file__).resolve().parent / "data" / "flagged_conflicts.csv"
 
