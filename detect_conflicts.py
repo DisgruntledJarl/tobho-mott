@@ -4,7 +4,7 @@
 from trakt.client import TraktRateLimitError, to_trakt_iso, trakt_post
 from trakt.csv_to_python import load_rows
 from trakt.history import fetch_watch_history
-from trakt.intervals import merge_intervals, row_duration, row_interval, row_title
+from trakt.intervals import row_duration, row_interval, row_title
 
 
 def detect_conflicts(rows):
@@ -20,48 +20,6 @@ def detect_conflicts(rows):
                 break
             conflicts.append((row_a, row_b))
     return conflicts
-
-
-def find_nearest_slot(row, rows):
-    duration = row_duration(row)
-    original_end = row["watched_dt"]
-    merged = merge_intervals(
-        sorted(
-            row_interval(other)
-            for other in rows
-            if other["history_id"] != row["history_id"]
-        )
-    )
-    gaps = (
-        [(None, None)]
-        if not merged
-        else [(None, merged[0][0])]
-        + [(merged[i][1], merged[i + 1][0]) for i in range(len(merged) - 1)]
-        + [(merged[-1][1], None)]
-    )
-
-    best_end, best_dist = None, None
-    for gap_start, gap_end in gaps:
-        if (
-            gap_start is not None
-            and gap_end is not None
-            and gap_end - gap_start < duration
-        ):
-            continue
-        candidate = original_end
-        if gap_start is not None:
-            candidate = max(candidate, gap_start + duration)
-        if gap_end is not None:
-            candidate = min(candidate, gap_end)
-        dist = abs((candidate - original_end).total_seconds())
-        if best_dist is None or dist < best_dist:
-            best_end, best_dist = candidate, dist
-
-    if best_end is None:
-        raise ValueError(
-            f"No gap large enough for {duration} — history_id={row['history_id']}"
-        )
-    return best_end
 
 
 def reschedule_on_trakt(row, new_end):
@@ -103,29 +61,6 @@ def reschedule_on_trakt(row, new_end):
         )
 
 
-def pick_entry_to_move(row_a, row_b):
-    types = (row_a["type"], row_b["type"])
-    if types == ("movie", "episode"):
-        return row_a
-    if types == ("episode", "movie"):
-        return row_b
-
-    if types == ("episode", "episode") and row_a["show_id"] == row_b["show_id"]:
-        key_a = (row_a["season_number"], row_a["episode_number"])
-        key_b = (row_b["season_number"], row_b["episode_number"])
-        if key_a != key_b:
-            start_a, start_b = row_interval(row_a)[0], row_interval(row_b)[0]
-            if key_a > key_b and start_a < start_b:
-                return row_a
-            if key_b > key_a and start_b < start_a:
-                return row_b
-
-    dur_a, dur_b = row_duration(row_a), row_duration(row_b)
-    if dur_a != dur_b:
-        return row_a if dur_a < dur_b else row_b
-    return row_a if row_interval(row_a)[0] > row_interval(row_b)[0] else row_b
-
-
 def main():
     try:
         rows = load_rows()
@@ -145,19 +80,18 @@ def main():
 
         moves = 0
         while conflicts:
-            seen = set()
-            for row_a, row_b in conflicts:
-                row = pick_entry_to_move(row_a, row_b)
-                if row["history_id"] in seen:
-                    continue
-                seen.add(row["history_id"])
-                new_end = find_nearest_slot(row, rows)
-                new_at = to_trakt_iso(new_end)
-                print(f"Moving {row_title(row)}: {row['watched_at']} -> {new_at}")
-                reschedule_on_trakt(row, new_end)
-                row["watched_dt"] = new_end
-                row["watched_at"] = new_at
-                moves += 1
+            row_a, row_b = conflicts[0]
+            
+            # Calculate the new end time for row_b by adding its duration to the end time of row_a,
+            # ensuring the two intervals no longer overlap.
+            new_end = row_a["watched_dt"] + row_duration(row_b)
+   
+            new_at = to_trakt_iso(new_end)
+            print(f"Moving {row_title(row_b)}: {row_b['watched_at']} -> {new_at}")
+            reschedule_on_trakt(row_b, new_end)
+            row_b["watched_dt"] = new_end
+            row_b["watched_at"] = new_at
+            moves += 1
             conflicts = detect_conflicts(rows)
 
         path, _ = fetch_watch_history()
