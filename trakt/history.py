@@ -73,10 +73,20 @@ def _movie_row(item):
 
 
 def fetch_watch_history(output=DEFAULT_OUTPUT):
-    """Fetch episode and movie history from Trakt and write to a CSV file."""
-    rows = [_episode_row(item) for item in _fetch_pages("episodes")]
-    rows.extend(_movie_row(item) for item in _fetch_pages("movies"))
+    """Fetch episode and movie history from Trakt and write to a CSV file.
+
+    Returns (output_path, stats) where stats has episodes, movies, and shows keys.
+    """
+    episode_rows = [_episode_row(item) for item in _fetch_pages("episodes")]
+    movie_rows = [_movie_row(item) for item in _fetch_pages("movies")]
+    rows = episode_rows + movie_rows
     rows.sort(key=lambda r: r["watched_at"])
+
+    stats = {
+        "episodes": len(episode_rows),
+        "movies": len(movie_rows),
+        "shows": len({r["show_id"] for r in episode_rows}),
+    }
 
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -84,4 +94,4 @@ def fetch_watch_history(output=DEFAULT_OUTPUT):
         writer = csv.DictWriter(f, fieldnames=_FIELDNAMES)
         writer.writeheader()
         writer.writerows(rows)
-    return output
+    return output, stats

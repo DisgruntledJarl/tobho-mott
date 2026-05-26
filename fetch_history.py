@@ -7,10 +7,13 @@ from trakt.history import fetch_watch_history
 
 def main():
     try:
-        path = fetch_watch_history()
+        path, stats = fetch_watch_history()
     except TraktRateLimitError as exc:
         raise SystemExit(str(exc)) from None
-    print(f"Wrote watch history to {path}")
+    print(
+        f"Wrote {stats['episodes']} episode(s) from {stats['shows']} show(s) "
+        f"and {stats['movies']} movie(s) to {path}"
+    )
 
 
 if __name__ == "__main__":

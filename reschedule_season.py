@@ -161,7 +161,7 @@ def main():
             return
 
         batch_reschedule(episodes, target_times)
-        path = fetch_watch_history()
+        path, _ = fetch_watch_history()
     except ValueError as exc:
         raise SystemExit(str(exc)) from None
     except TraktRateLimitError as exc:

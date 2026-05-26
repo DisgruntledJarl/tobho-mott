@@ -100,7 +100,7 @@ def main():
 
         print(f"Found {initial} overlapping pair(s).")
         moves = fix_conflicts(rows)
-        path = fetch_watch_history()
+        path, _ = fetch_watch_history()
     except TraktRateLimitError as exc:
         raise SystemExit(str(exc)) from None
 
