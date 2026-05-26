@@ -27,9 +27,10 @@ _CSV_FIELDNAMES = [
 def split_first_watch(entries):
     """Split episode entries into ``(first_watch, rewatches)``.
 
-    Entries are sorted by ``watched_dt``. The first-watch run ends once every
-    episode number in the set has appeared exactly once; all later entries are
-    rewatches. Both returned lists preserve chronological order.
+    Entries are sorted by ``watched_dt``. The first time each episode number
+    appears it counts toward the first-watch run; repeats before the season is
+    complete are rewatches. After every episode number in the season has been
+    first-watched once, all later entries are rewatches.
     """
     entries = sorted(entries, key=lambda e: e["watched_dt"])
     all_episodes = {e["episode_number"] for e in entries}
@@ -40,6 +41,9 @@ def split_first_watch(entries):
 
     for entry in entries:
         if complete:
+            rewatches.append(entry)
+            continue
+        if entry["episode_number"] in seen:
             rewatches.append(entry)
             continue
         first_watch.append(entry)
