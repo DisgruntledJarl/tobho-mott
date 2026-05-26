@@ -24,32 +24,26 @@ def parse_date_range(start, end):
     return start_dt, end_dt
 
 
-def find_season_rows(rows, show_query, season):
-    """Return first-watch episodes for a unique show match, sorted by episode number."""
-    query = show_query.casefold()
+def find_season_rows(rows, show_id, season):
+    """Return first-watch episodes for a show, sorted by episode number."""
     matched = [
         row
         for row in rows
-        if row["type"] == "episode" and query in row["show_name"].casefold()
+        if row["type"] == "episode" and row["show_id"] == show_id
     ]
 
     if not matched:
-        raise ValueError(f"No show matches {show_query!r}")
+        raise ValueError(f"No episodes found for show_id {show_id}")
 
-    show_ids = {row["show_id"] for row in matched}
-    if len(show_ids) > 1:
-        names = sorted({row["show_name"] for row in matched})
-        raise ValueError(
-            f"Multiple shows match {show_query!r}: {', '.join(names)}"
-        )
-
+    show_name = matched[0]["show_name"]
     season_rows = [row for row in matched if row["season_number"] == season]
     first_watch, _ = split_first_watch(season_rows)
     first_watch.sort(key=lambda row: row["episode_number"])
 
     if not first_watch:
         raise ValueError(
-            f"No first-watch episodes found for {show_query!r} season {season}"
+            f"No first-watch episodes found for {show_name!r} "
+            f"(show_id {show_id}) season {season}"
         )
 
     return first_watch
@@ -135,7 +129,12 @@ def batch_reschedule(episodes, target_times):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--show", required=True, help="Show name substring to match")
+    parser.add_argument(
+        "--show-id",
+        type=int,
+        required=True,
+        help="Trakt show ID from watch history CSV (show_id column)",
+    )
     parser.add_argument("--season", type=int, required=True, help="Season number")
     parser.add_argument(
         "--start", required=True, help="Start date (YYYY-MM-DD, UTC start of day)"
@@ -154,7 +153,7 @@ def main():
     try:
         rows = load_rows(args.csv)
         start_dt, end_dt = parse_date_range(args.start, args.end)
-        episodes = find_season_rows(rows, args.show, args.season)
+        episodes = find_season_rows(rows, args.show_id, args.season)
         target_times = generate_target_times(episodes, start_dt, end_dt)
         print_timetable(episodes, target_times)
         if not confirm_apply():
