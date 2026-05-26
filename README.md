@@ -62,19 +62,21 @@ python detect_conflicts.py
 
 Prints a summary and writes flagged pairs to `data/flagged_conflicts.csv`.
 
-## detect_order
+## reschedule_season
 
-Detects episodes recorded out of watch order — same-season (e.g. S1E8 before S1E7) and cross-season (e.g. S1E12 before S2E3) first-watch violations.
+Moves an entire season's first-watch episodes into a date range. Episodes keep narrative order; end times are spread randomly across equal slots in that window. Prints a preview and asks for approval before updating Trakt (two API calls: bulk remove + bulk add).
 
 ```bash
-python detect_order.py
+python reschedule_season.py --show-id 13855 --season 1 --start 2020-01-01 --end 2020-12-31
 ```
 
-Prints a summary and writes flagged entries to `data/flagged_order.csv` with an `action` column for review (`fix` or `exclude`).
+Use the `show_id` column from `data/watch_history.csv`. After applying, run `fix_conflicts.py` if overlaps may remain.
 
 **Options:**
 
 | Flag | Purpose |
 | --- | --- |
-| `--input PATH` | Use a different watch history CSV (default: `data/watch_history.csv`) |
-| `--exclude SHOW_ID:SEASON:EPISODE` | Skip a specific episode from order checks (repeatable) |
+| `--show-id ID` | Trakt show ID from watch history CSV (required) |
+| `--season N` | Season number (required) |
+| `--start` / `--end` | Date range `YYYY-MM-DD` (UTC start/end of day) |
+| `--csv PATH` | Watch history CSV (default: `data/watch_history.csv`) |
