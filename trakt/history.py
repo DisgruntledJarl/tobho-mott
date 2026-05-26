@@ -4,7 +4,7 @@ import csv
 import time
 from pathlib import Path
 
-from trakt.client import trakt_get
+from trakt.client import TraktRateLimitError, trakt_get
 
 DEFAULT_OUTPUT = Path("data/watch_history.csv")
 
@@ -104,3 +104,18 @@ def fetch_watch_history():
         writer.writeheader()
         writer.writerows(rows)
     return output, stats
+
+
+def main():
+    try:
+        path, stats = fetch_watch_history()
+    except TraktRateLimitError as exc:
+        raise SystemExit(str(exc)) from None
+    print(
+        f"Wrote {stats['episodes']} episode(s) from {stats['shows']} show(s) "
+        f"and {stats['movies']} movie(s) to {path}"
+    )
+
+
+if __name__ == "__main__":
+    main()

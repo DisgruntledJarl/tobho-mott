@@ -36,9 +36,9 @@ fi
 
 if [[ -z "$ACCESS_TOKEN" ]]; then
   echo "Starting Trakt device authentication..."
-  trakt-auth
+  python "$REPO_ROOT/trakt/client.py"
 else
-  echo "TRAKT_ACCESS_TOKEN already set; skipping trakt-auth."
+  echo "TRAKT_ACCESS_TOKEN already set; skipping login."
 fi
 
 echo ""

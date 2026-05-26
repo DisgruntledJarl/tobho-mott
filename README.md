@@ -23,31 +23,29 @@ Create a Trakt app at [trakt.tv/oauth/applications](https://trakt.tv/oauth/appli
 The script:
 1. Installs the repo as an editable package (`pip install -e .`)
 2. Copies `.env.example` → `.env` if missing — edit it with your `TRAKT_CLIENT_ID` and `TRAKT_CLIENT_SECRET`, then re-run
-3. Runs `trakt-auth` for device login when no access token is set
+3. Runs `python trakt/client.py` for device login when no access token is set
 
 Device login flow:
 1. Open the URL printed in the terminal (usually [https://trakt.tv/activate](https://trakt.tv/activate))
 2. Enter the user code shown in the terminal
 3. Wait for authorisation to complete
 
-`TRAKT_ACCESS_TOKEN` and `TRAKT_REFRESH_TOKEN` are written to `.env` on success.
+`TRAKT_ACCESS_TOKEN` is written to `.env` on success.
 
-### Refresh token
+### Re-authenticate
 
-When the access token expires:
+When the access token expires, run device login again:
 
 ```bash
-trakt-auth --refresh
+python trakt/client.py
 ```
-
-Uses `TRAKT_REFRESH_TOKEN` from `.env` to obtain a new access token. If refresh fails or no refresh token exists, run `trakt-auth` again for a full device login.
 
 ## Fetch watch history
 
 All tools read from a local CSV snapshot of your Trakt history. Export it with:
 
 ```bash
-python fetch_history.py
+python trakt/history.py
 ```
 
 Writes `data/watch_history.csv` (episodes and movies with runtimes).

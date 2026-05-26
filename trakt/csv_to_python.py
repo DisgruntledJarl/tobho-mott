@@ -28,6 +28,6 @@ def _parse_row(row):
 def load_rows(path=DEFAULT_CSV):
     path = Path(path)
     if not path.exists():
-        raise SystemExit(f"Missing {path}. Run fetch_history.py first.")
+        raise SystemExit(f"Missing {path}. Run python trakt/history.py first.")
     with path.open(newline="", encoding="utf-8") as f:
         return [_parse_row(row) for row in csv.DictReader(f)]
