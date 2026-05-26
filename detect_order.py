@@ -87,6 +87,27 @@ def _first_watch_by_episode(entries):
     return by_key
 
 
+def _skip_ahead_violations(first_watch):
+    """Yield skip-ahead episodes watched before a lower-numbered first watch."""
+    n = len(first_watch)
+    for i, row in enumerate(first_watch):
+        later_numbers = [
+            first_watch[j]["episode_number"] for j in range(i + 1, n)
+        ]
+        if not later_numbers:
+            continue
+        later_min = min(later_numbers)
+        if row["episode_number"] <= later_min:
+            continue
+        later_lower = [
+            first_watch[j]
+            for j in range(i + 1, n)
+            if first_watch[j]["episode_number"] < row["episode_number"]
+        ]
+        expected_after = max(later_lower, key=lambda r: r["episode_number"])
+        yield row, expected_after, "skip_ahead"
+
+
 def _same_season_violations(episodes, exclusions):
     """Yield ``(row, expected_after_row, violation_type)`` for same-season issues."""
     by_show_season = defaultdict(list)
@@ -97,11 +118,18 @@ def _same_season_violations(episodes, exclusions):
 
     for (_, _), season_entries in sorted(by_show_season.items()):
         first_watch, _ = split_first_watch(season_entries)
+        skip_ahead_ids = {
+            row["history_id"] for row, _, _ in _skip_ahead_violations(first_watch)
+        }
+        for row, expected_after, violation_type in _skip_ahead_violations(first_watch):
+            yield row, expected_after, violation_type
         prev_episode = None
         prev_row = None
         for row in first_watch:
             episode_number = row["episode_number"]
             if prev_episode is not None and episode_number < prev_episode:
+                if prev_row["history_id"] in skip_ahead_ids:
+                    continue
                 yield row, prev_row, "same_season"
             prev_episode = episode_number
             prev_row = row
@@ -244,12 +272,16 @@ def print_summary(violations):
     same_season = sum(
         1 for violation in violations if violation["violation_type"] == "same_season"
     )
+    skip_ahead = sum(
+        1 for violation in violations if violation["violation_type"] == "skip_ahead"
+    )
     cross_season = sum(
         1 for violation in violations if violation["violation_type"] == "cross_season"
     )
     print(
         f"Found {len(violations)} out-of-order first-watch episode(s) "
-        f"({same_season} same-season, {cross_season} cross-season)."
+        f"({same_season} same-season, {skip_ahead} skip-ahead, "
+        f"{cross_season} cross-season)."
     )
     for violation in violations:
         row = violation["row"]
