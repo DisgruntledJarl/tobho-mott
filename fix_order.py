@@ -75,9 +75,10 @@ def fix_order_rows(flagged_rows, rows, *, dry_run=False):
     fix_rows = sorted(
         flagged_rows,
         key=lambda row: (
+            0 if row.get("violation_type") == "skip_ahead" else 1,
             row["show_name"],
             int(row["season_number"]),
-            int(row["episode_number"]),
+            -int(row["episode_number"]),
         ),
     )
 
@@ -95,7 +96,9 @@ def fix_order_rows(flagged_rows, rows, *, dry_run=False):
             row["watched_dt"] = predecessor_end
 
         try:
-            new_end = find_nearest_slot(row, rows)
+            new_end = find_nearest_slot(
+                row, rows, min_end=predecessor_end if predecessor_end is not None else None
+            )
         finally:
             row["watched_dt"] = original_end
 

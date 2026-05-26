@@ -24,16 +24,25 @@ def _free_gaps(merged):
     yield merged[-1][1], None
 
 
-def _candidate_end(original_end, gap_start, gap_end, duration):
+def _candidate_end(original_end, gap_start, gap_end, duration, min_end=None):
     lo = gap_start + duration if gap_start is not None else None
     hi = gap_end
-    return _clamp(original_end, lo, hi)
+    candidate = _clamp(original_end, lo, hi)
+    if min_end is not None:
+        if hi is not None and min_end > hi:
+            return None
+        if lo is not None and min_end > lo:
+            candidate = _clamp(min_end, lo, hi)
+        elif min_end > candidate:
+            candidate = min_end
+    return candidate
 
 
-def find_nearest_slot(row, rows):
+def find_nearest_slot(row, rows, min_end=None):
     """Return the end time closest to row's current end that fits without overlap.
 
-    Uses every other row as occupied blocks.
+    Uses every other row as occupied blocks. When ``min_end`` is set, only slots
+    ending at or after that time are considered.
     """
     duration = row_duration(row)
     original_end = row["watched_dt"]
@@ -54,7 +63,11 @@ def find_nearest_slot(row, rows):
             and gap_end - gap_start < duration
         ):
             continue
-        candidate = _candidate_end(original_end, gap_start, gap_end, duration)
+        candidate = _candidate_end(
+            original_end, gap_start, gap_end, duration, min_end=min_end
+        )
+        if candidate is None:
+            continue
         distance = abs((candidate - original_end).total_seconds())
         if best_distance is None or distance < best_distance:
             best_end = candidate
