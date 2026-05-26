@@ -92,6 +92,15 @@ def main():
     write_violations_csv(violations, OUTPUT)
     print(f"Wrote {len(violations)} violation(s) to {OUTPUT}")
 
+    if violations:
+        print(
+            "\nTo look up show_id:\n"
+            "  python3 -c \"from trakt.csv_to_python import load_rows; "
+            "print(next(r['show_id'] for r in load_rows() if r['show_name']=='SHOW_NAME'))\"\n"
+            "\nTo fix an out-of-order season, run:\n"
+            "  python reschedule_season.py --show-id SHOW_ID --season N --start YYYY-MM-DD --end YYYY-MM-DD"
+        )
+
 
 if __name__ == "__main__":
     main()
