@@ -87,8 +87,24 @@ def _first_watch_by_episode(entries):
     return by_key
 
 
-def _skip_ahead_violations(first_watch):
+def _late_watch_violations(first_watch):
+    """Yield episodes watched too late — after the next episode in sequence."""
+    flagged = set()
+    for j, row in enumerate(first_watch):
+        for i in range(j):
+            earlier = first_watch[i]
+            if earlier["episode_number"] != row["episode_number"] + 1:
+                continue
+            if earlier["history_id"] in flagged:
+                continue
+            flagged.add(row["history_id"])
+            yield row, earlier, "late_watch"
+            break
+
+
+def _skip_ahead_violations(first_watch, late_watch_ids=None):
     """Yield skip-ahead episodes watched before a lower-numbered first watch."""
+    late_watch_ids = late_watch_ids or set()
     n = len(first_watch)
     for i, row in enumerate(first_watch):
         later_numbers = [
@@ -104,6 +120,12 @@ def _skip_ahead_violations(first_watch):
             for j in range(i + 1, n)
             if first_watch[j]["episode_number"] < row["episode_number"]
         ]
+        if any(ep["history_id"] in late_watch_ids for ep in later_lower):
+            continue
+        if any(
+            row["episode_number"] == ep["episode_number"] + 1 for ep in later_lower
+        ):
+            continue
         expected_after = max(later_lower, key=lambda r: r["episode_number"])
         yield row, expected_after, "skip_ahead"
 
@@ -118,10 +140,18 @@ def _same_season_violations(episodes, exclusions):
 
     for (_, _), season_entries in sorted(by_show_season.items()):
         first_watch, _ = split_first_watch(season_entries)
-        skip_ahead_ids = {
-            row["history_id"] for row, _, _ in _skip_ahead_violations(first_watch)
+        late_watch_ids = {
+            row["history_id"] for row, _, _ in _late_watch_violations(first_watch)
         }
-        for row, expected_after, violation_type in _skip_ahead_violations(first_watch):
+        skip_ahead_ids = {
+            row["history_id"]
+            for row, _, _ in _skip_ahead_violations(first_watch, late_watch_ids)
+        }
+        for row, expected_after, violation_type in _late_watch_violations(first_watch):
+            yield row, expected_after, violation_type
+        for row, expected_after, violation_type in _skip_ahead_violations(
+            first_watch, late_watch_ids
+        ):
             yield row, expected_after, violation_type
         prev_episode = None
         prev_row = None
@@ -275,21 +305,28 @@ def print_summary(violations):
     skip_ahead = sum(
         1 for violation in violations if violation["violation_type"] == "skip_ahead"
     )
+    late_watch = sum(
+        1 for violation in violations if violation["violation_type"] == "late_watch"
+    )
     cross_season = sum(
         1 for violation in violations if violation["violation_type"] == "cross_season"
     )
     print(
         f"Found {len(violations)} out-of-order first-watch episode(s) "
-        f"({same_season} same-season, {skip_ahead} skip-ahead, "
+        f"({same_season} same-season, {skip_ahead} skip-ahead, {late_watch} late-watch, "
         f"{cross_season} cross-season)."
     )
     for violation in violations:
         row = violation["row"]
         expected_after = violation["expected_after_row"]
+        if violation["violation_type"] == "late_watch":
+            relation = "watched after"
+        else:
+            relation = "watched before"
         print(
             f"  [{violation['violation_type']}] "
             f"{row_title(row)} ({row['watched_at']}) "
-            f"— watched before {row_title(expected_after)} "
+            f"— {relation} {row_title(expected_after)} "
             f"({expected_after['watched_at']})"
         )
 

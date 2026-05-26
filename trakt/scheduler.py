@@ -24,9 +24,11 @@ def _free_gaps(merged):
     yield merged[-1][1], None
 
 
-def _candidate_end(original_end, gap_start, gap_end, duration, min_end=None):
+def _candidate_end(original_end, gap_start, gap_end, duration, min_end=None, max_end=None):
     lo = gap_start + duration if gap_start is not None else None
     hi = gap_end
+    if max_end is not None and hi is not None and max_end < hi:
+        hi = max_end
     candidate = _clamp(original_end, lo, hi)
     if min_end is not None:
         if hi is not None and min_end > hi:
@@ -35,14 +37,22 @@ def _candidate_end(original_end, gap_start, gap_end, duration, min_end=None):
             candidate = _clamp(min_end, lo, hi)
         elif min_end > candidate:
             candidate = min_end
+    if max_end is not None:
+        if lo is not None and max_end < lo:
+            return None
+        if candidate > max_end:
+            candidate = max_end
+        if lo is not None and candidate < lo:
+            return None
     return candidate
 
 
-def find_nearest_slot(row, rows, min_end=None):
+def find_nearest_slot(row, rows, min_end=None, max_end=None):
     """Return the end time closest to row's current end that fits without overlap.
 
     Uses every other row as occupied blocks. When ``min_end`` is set, only slots
-    ending at or after that time are considered.
+    ending at or after that time are considered. When ``max_end`` is set, only
+    slots ending at or before that time are considered.
     """
     duration = row_duration(row)
     original_end = row["watched_dt"]
@@ -63,8 +73,15 @@ def find_nearest_slot(row, rows, min_end=None):
             and gap_end - gap_start < duration
         ):
             continue
+        if max_end is not None and gap_start is not None and max_end < gap_start + duration:
+            continue
         candidate = _candidate_end(
-            original_end, gap_start, gap_end, duration, min_end=min_end
+            original_end,
+            gap_start,
+            gap_end,
+            duration,
+            min_end=min_end,
+            max_end=max_end,
         )
         if candidate is None:
             continue
