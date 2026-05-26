@@ -8,3 +8,4 @@ venv/
 *.md
 !README.md
 trakt_scripts.egg-info/
+.cursor/
