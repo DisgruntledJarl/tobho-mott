@@ -58,7 +58,7 @@ Detects overlapping watch intervals in your Trakt history — pairs of entries w
 python detect_conflicts.py
 ```
 
-Prints a summary and writes flagged pairs to `data/flagged_conflicts.csv`.
+Prints how many overlapping pairs were found (read-only audit; does not modify Trakt).
 
 ## reschedule_season
 
