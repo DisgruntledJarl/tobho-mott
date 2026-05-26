@@ -17,6 +17,15 @@ def row_interval(row):
     return end - row_duration(row), end
 
 
+def row_title(row):
+    if row["type"] == "episode":
+        return (
+            f"{row['show_name']} "
+            f"S{row['season_number']:02d}E{row['episode_number']:02d}"
+        )
+    return row["movie_title"]
+
+
 def intervals_overlap(a_start, a_end, b_start, b_end):
     return a_start < b_end and b_start < a_end
 

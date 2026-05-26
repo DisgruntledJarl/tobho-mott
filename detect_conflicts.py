@@ -5,7 +5,7 @@ import csv
 from pathlib import Path
 
 from trakt.csv_to_python import load_rows
-from trakt.intervals import EPISODE_DURATION, MOVIE_DURATION, row_duration, row_interval
+from trakt.intervals import row_duration, row_interval, row_title
 
 OUTPUT = Path(__file__).resolve().parent / "data" / "flagged_conflicts.csv"
 
@@ -25,37 +25,23 @@ _FIELDNAMES = [
 ]
 
 
-def row_title(row):
-    if row["type"] == "episode":
-        return (
-            f"{row['show_name']} "
-            f"S{row['season_number']:02d}E{row['episode_number']:02d}"
-        )
-    return row["movie_title"]
-
-
 def detect_conflicts(rows):
     """Return conflict dicts for every pair of overlapping watch intervals.
 
     Each dict has keys: row_a, row_b.
-    Uses runtime from the row when present; falls back to MOVIE_DURATION /
-    EPISODE_DURATION.
+    Uses runtime from the row when present; falls back to default episode/movie
+    durations from trakt.intervals.
 
     3-way (or N-way) pile-ups produce one dict per overlapping pair, so a
     3-way conflict yields three dicts: (A,B), (A,C), (B,C).
     """
-
-    # Get start, end time and store intervals as (start, end, row)
     intervals = sorted(
         ((*row_interval(row), row) for row in rows),
         key=lambda item: item[0],
     )
     conflicts = []
 
-    """The logic is to use a sweep line algorithm. We have a sorted list of intervals by start time. 
-    We compare the each row with the subsequent rows but not all rows.
-    If the next row starts before the current row ends, we break. Everything before that is compared. 
-    """
+    # Sweep line: sorted by start time; stop inner loop once b starts at/after a ends.
     for i, (a_start, a_end, row_a) in enumerate(intervals):
         for b_start, _, row_b in intervals[i + 1 :]:
             if b_start >= a_end:
@@ -85,13 +71,9 @@ def conflict_to_csv_row(conflict):
     }
 
 
-def print_summary(conflicts):
-    print(f"Found {len(conflicts)} overlapping pair(s).")
-
-
 def main():
     conflicts = detect_conflicts(load_rows())
-    print_summary(conflicts)
+    print(f"Found {len(conflicts)} overlapping pair(s).")
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     with OUTPUT.open("w", newline="", encoding="utf-8") as f:

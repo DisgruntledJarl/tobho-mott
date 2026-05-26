@@ -1,59 +1,51 @@
 #!/usr/bin/env python3
 """Reschedule overlapping watch entries to the nearest free time slot."""
 
-from trakt.client import to_trakt_iso, trakt_post
-from trakt.intervals import merge_intervals, row_duration, row_interval
-
-
-def _remove_history(history_id):
-    trakt_post("/sync/history/remove", {"ids": [history_id]})
-
-
-def _add_episode(row, new_end):
-    trakt_post(
-        "/sync/history",
-        {
-            "shows": [
-                {
-                    "ids": {"trakt": row["show_id"]},
-                    "seasons": [
-                        {
-                            "number": row["season_number"],
-                            "episodes": [
-                                {
-                                    "number": row["episode_number"],
-                                    "watched_at": to_trakt_iso(new_end),
-                                }
-                            ],
-                        }
-                    ],
-                }
-            ],
-        },
-    )
-
-
-def _add_movie(row, new_end):
-    trakt_post(
-        "/sync/history",
-        {
-            "movies": [
-                {
-                    "ids": {"trakt": row["item_trakt_id"]},
-                    "watched_at": to_trakt_iso(new_end),
-                }
-            ],
-        },
-    )
+from detect_conflicts import detect_conflicts
+from trakt.client import TraktRateLimitError, to_trakt_iso, trakt_post
+from trakt.csv_to_python import load_rows
+from trakt.history import fetch_watch_history
+from trakt.intervals import merge_intervals, row_duration, row_interval, row_title
 
 
 def reschedule_on_trakt(row, new_end):
     """Remove row from Trakt history and re-add at new_end."""
-    _remove_history(row["history_id"])
+    trakt_post("/sync/history/remove", {"ids": [row["history_id"]]})
+    watched_at = to_trakt_iso(new_end)
     if row["type"] == "episode":
-        _add_episode(row, new_end)
+        trakt_post(
+            "/sync/history",
+            {
+                "shows": [
+                    {
+                        "ids": {"trakt": row["show_id"]},
+                        "seasons": [
+                            {
+                                "number": row["season_number"],
+                                "episodes": [
+                                    {
+                                        "number": row["episode_number"],
+                                        "watched_at": watched_at,
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
     else:
-        _add_movie(row, new_end)
+        trakt_post(
+            "/sync/history",
+            {
+                "movies": [
+                    {
+                        "ids": {"trakt": row["item_trakt_id"]},
+                        "watched_at": watched_at,
+                    }
+                ],
+            },
+        )
 
 
 def _clamp(value, lo, hi):
@@ -74,12 +66,6 @@ def _free_gaps(merged):
     for i in range(len(merged) - 1):
         yield merged[i][1], merged[i + 1][0]
     yield merged[-1][1], None
-
-
-def _gap_fits(gap_start, gap_end, duration):
-    if gap_start is None or gap_end is None:
-        return True
-    return gap_end - gap_start >= duration
 
 
 def _candidate_end(original_end, gap_start, gap_end, duration):
@@ -106,7 +92,11 @@ def find_nearest_slot(row, rows):
     best_distance = None
 
     for gap_start, gap_end in _free_gaps(merged):
-        if not _gap_fits(gap_start, gap_end, duration):
+        if (
+            gap_start is not None
+            and gap_end is not None
+            and gap_end - gap_start < duration
+        ):
             continue
         candidate = _candidate_end(original_end, gap_start, gap_end, duration)
         distance = abs((candidate - original_end).total_seconds())
@@ -119,3 +109,66 @@ def find_nearest_slot(row, rows):
             f"No gap large enough for {duration} — history_id={row['history_id']}"
         )
     return best_end
+
+
+def pick_entry_to_move(row_a, row_b):
+    dur_a = row_duration(row_a)
+    dur_b = row_duration(row_b)
+    if dur_a != dur_b:
+        return row_a if dur_a < dur_b else row_b
+    start_a, _ = row_interval(row_a)
+    start_b, _ = row_interval(row_b)
+    return row_a if start_a > start_b else row_b
+
+
+def entries_to_move(conflicts):
+    seen = set()
+    rows = []
+    for conflict in conflicts:
+        row = pick_entry_to_move(conflict["row_a"], conflict["row_b"])
+        if row["history_id"] in seen:
+            continue
+        seen.add(row["history_id"])
+        rows.append(row)
+    return rows
+
+
+def fix_conflicts(rows):
+    moves = 0
+    while True:
+        conflicts = detect_conflicts(rows)
+        if not conflicts:
+            break
+        for row in entries_to_move(conflicts):
+            new_end = find_nearest_slot(row, rows)
+            new_at = to_trakt_iso(new_end)
+            print(f"Moving {row_title(row)}: {row['watched_at']} -> {new_at}")
+            reschedule_on_trakt(row, new_end)
+            row["watched_dt"] = new_end
+            row["watched_at"] = new_at
+            moves += 1
+    return moves
+
+
+def main():
+    try:
+        rows = load_rows()
+        initial = len(detect_conflicts(rows))
+        if initial == 0:
+            print("No conflicts to fix.")
+            return
+
+        print(f"Found {initial} overlapping pair(s).")
+        moves = fix_conflicts(rows)
+        path = fetch_watch_history()
+    except TraktRateLimitError as exc:
+        raise SystemExit(str(exc)) from None
+
+    remaining = len(detect_conflicts(load_rows()))
+    print(f"Moved {moves} entr{'y' if moves == 1 else 'ies'}.")
+    print(f"Refreshed watch history at {path}")
+    print(f"Remaining conflicts: {remaining}")
+
+
+if __name__ == "__main__":
+    main()
