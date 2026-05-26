@@ -229,10 +229,10 @@ def device_login() -> dict[str, Any]:
     raise SystemExit("Device code expired. Run again to get a new code.")
 
 
-def refresh_access_token(refresh_token: str | None = None) -> dict[str, Any]:
+def refresh_access_token() -> dict[str, Any]:
     """Use a refresh token to get a new access token."""
     client_id, client_secret = _load_credentials()
-    refresh_token = refresh_token or os.environ.get("TRAKT_REFRESH_TOKEN")
+    refresh_token = os.environ.get("TRAKT_REFRESH_TOKEN")
     if not refresh_token:
         raise SystemExit("No TRAKT_REFRESH_TOKEN in .env. Run device login first.")
 

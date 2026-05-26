@@ -8,7 +8,6 @@ from pathlib import Path
 
 from trakt.client import TraktRateLimitError, to_trakt_iso, trakt_post
 from trakt.csv_to_python import DEFAULT_CSV, load_rows
-from trakt.episodes import split_first_watch
 from trakt.history import fetch_watch_history
 from trakt.intervals import row_duration, row_title
 
@@ -36,8 +35,23 @@ def find_season_rows(rows, show_id, season):
         raise ValueError(f"No episodes found for show_id {show_id}")
 
     show_name = matched[0]["show_name"]
-    season_rows = [row for row in matched if row["season_number"] == season]
-    first_watch, _ = split_first_watch(season_rows)
+    season_rows = sorted(
+        [row for row in matched if row["season_number"] == season],
+        key=lambda row: row["watched_dt"],
+    )
+    all_episodes = {row["episode_number"] for row in season_rows}
+    seen = set()
+    first_watch = []
+    complete = False
+    for entry in season_rows:
+        if complete:
+            continue
+        if entry["episode_number"] in seen:
+            continue
+        first_watch.append(entry)
+        seen.add(entry["episode_number"])
+        if seen >= all_episodes:
+            complete = True
     first_watch.sort(key=lambda row: row["episode_number"])
 
     if not first_watch:

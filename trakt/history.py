@@ -81,7 +81,7 @@ def _movie_row(item):
     }
 
 
-def fetch_watch_history(output=DEFAULT_OUTPUT):
+def fetch_watch_history():
     """Fetch episode and movie history from Trakt and write to a CSV file.
 
     Returns (output_path, stats) where stats has episodes, movies, and shows keys.
@@ -97,7 +97,7 @@ def fetch_watch_history(output=DEFAULT_OUTPUT):
         "shows": len({r["show_id"] for r in episode_rows}),
     }
 
-    output = Path(output)
+    output = DEFAULT_OUTPUT
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=_FIELDNAMES)
