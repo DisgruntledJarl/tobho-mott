@@ -6,7 +6,6 @@ from collections import defaultdict
 from pathlib import Path
 
 from trakt.csv_to_python import load_rows
-from trakt.paths import DEFAULT_CSV
 from trakt.intervals import row_title
 
 OUTPUT = Path(__file__).resolve().parent / "data" / "flagged_order.csv"
@@ -82,7 +81,7 @@ def write_violations_csv(violations, output_path):
 
 
 def main():
-    episodes = [r for r in load_rows(DEFAULT_CSV) if r["type"] == "episode"]
+    episodes = [r for r in load_rows() if r["type"] == "episode"]
     violations = detect_violations(episodes)
 
     print(f"Found {len(violations)} out-of-order first-watch episode(s).")
