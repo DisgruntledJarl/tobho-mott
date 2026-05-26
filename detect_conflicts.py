@@ -2,7 +2,7 @@
 """Detect overlapping watch intervals in Trakt history."""
 
 from trakt.csv_to_python import load_rows
-from trakt.intervals import row_interval
+from trakt.intervals import row_interval, row_title
 
 
 def detect_conflicts(rows):
@@ -32,11 +32,15 @@ def detect_conflicts(rows):
 
 def main():
     conflicts = detect_conflicts(load_rows())
-    n = len(conflicts)
-    if n == 0:
+    if not conflicts:
         print("No overlapping watch intervals found.")
         return
-    print(f"Found {n} overlapping pair(s).")
+    print(f"Found {len(conflicts)} overlapping pair(s).")
+    for row_a, row_b in ((c["row_a"], c["row_b"]) for c in conflicts):
+        print(
+            f"{row_title(row_a)} ({row_a['watched_at']}) vs "
+            f"{row_title(row_b)} ({row_b['watched_at']})"
+        )
 
 
 if __name__ == "__main__":
