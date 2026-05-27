@@ -52,13 +52,20 @@ def _clear_progress():
 def _fetch_pages(history_type):
     page = 1
     items = []
+    _emit_fetch_progress(history_type)
     while True:
         response = trakt_get(
             f"/sync/history/{history_type}",
             {"page": page, "limit": 1000, "extended": "full"},
         )
-        items.extend(response.json())
         page_count = int(response.headers.get("X-Pagination-Page-Count", 1))
+        items.extend(response.json())
+        _emit_fetch_progress(
+            history_type,
+            item_count=len(items),
+            page=page,
+            page_count=page_count,
+        )
         if page >= page_count:
             break
         if page >= 5:
