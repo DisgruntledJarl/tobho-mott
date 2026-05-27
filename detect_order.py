@@ -6,7 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from trakt.csv_to_python import load_rows
-from trakt.intervals import row_title
+from trakt.utils import row_title
 
 OUTPUT = Path(__file__).resolve().parent / "data" / "flagged_order.csv"
 
