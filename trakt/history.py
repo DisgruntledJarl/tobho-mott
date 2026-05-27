@@ -112,8 +112,11 @@ def fetch_watch_history():
 
     Returns (output_path, stats) where stats has episodes, movies, and shows keys.
     """
-    episode_rows = [_episode_row(item) for item in _fetch_pages("episodes")]
-    movie_rows = [_movie_row(item) for item in _fetch_pages("movies")]
+    try:
+        episode_rows = [_episode_row(item) for item in _fetch_pages("episodes")]
+        movie_rows = [_movie_row(item) for item in _fetch_pages("movies")]
+    finally:
+        _clear_progress()
     rows = episode_rows + movie_rows
     rows.sort(key=lambda r: r["watched_at"])
 
