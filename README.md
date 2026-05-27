@@ -134,7 +134,7 @@ Moves an entire season's first-watch episodes into a date range. Episodes stay i
 python reschedule_season.py --show-name "Breaking Bad" --season 1 --start 2020-01-01 --end 2020-12-31
 ```
 
-The show name is matched against `show_name` values in `data/watch_history.csv` (case and punctuation are ignored). Partial matches work as it does a fuzzy search. If more than one show matches, you get a numbered list to pick from (or `0` to cancel). After applying, run `fix_conflicts.py` if overlaps may remain.
+The show name is matched against `show_name` values in `data/watch_history.csv` (case and punctuation are ignored). Partial matches work as it does a fuzzy search. If more than one show matches, you get a numbered list to pick from (or `0` to cancel). After applying, run `detect_conflicts.py` if overlaps may remain.
 
 **Options:**
 
