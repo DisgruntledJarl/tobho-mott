@@ -234,8 +234,9 @@ def main():
     try:
         rows = load_rows(args.csv)
         show_map = build_show_name_map(rows)
+        _, show_id = resolve_show(args.show_name, show_map)
         start_dt, end_dt = parse_date_range(args.start, args.end)
-        episodes = find_season_rows(rows, args.show_id, args.season)
+        episodes = find_season_rows(rows, show_id, args.season)
         target_times = generate_target_times(episodes, start_dt, end_dt)
         print_timetable(episodes, target_times)
         if not confirm_apply():
