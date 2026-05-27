@@ -137,35 +137,15 @@ When violations exist, the script prints a static `reschedule_season.py` command
 Moves an entire season's first-watch episodes into a date range. Episodes stay in narrative order; end times are spread randomly within equal slots across the window. Prints a preview and asks for approval before updating Trakt (two API calls: bulk remove + bulk add).
 
 ```bash
-python reschedule_season.py --show-id 13855 --season 1 --start 2020-01-01 --end 2020-12-31
+python reschedule_season.py --show-name "Breaking Bad" --season 1 --start 2020-01-01 --end 2020-12-31
 ```
 
-Use the `show_id` column from `data/watch_history.csv`. After applying, run `detect_conflicts.py` if new overlaps may exist.
+The show name is matched against `show_name` values in `data/watch_history.csv` (case and punctuation are ignored). Partial matches work as it does a fuzzy search. If more than one show matches, you get a numbered list to pick from (or `0` to cancel). After applying, run `fix_conflicts.py` if overlaps may remain.
 
 **Options:**
 
-
-| Flag                | Purpose                                               |
-| ------------------- | ----------------------------------------------------- |
-| `--show-id ID`      | Trakt show ID from watch history CSV (required)       |
-| `--season N`        | Season number (required)                              |
-| `--start` / `--end` | Date range `YYYY-MM-DD` (UTC start/end of day)        |
-| `--csv PATH`        | Watch history CSV (default: `data/watch_history.csv`) |
-
-
----
-
-## Typical workflow
-
-```bash
-source .venv/bin/activate
-
-python run.py                      # fetch snapshot, then pick conflicts or order check
-python run.py --no-fetch           # re-check order/conflicts on existing CSV (optional)
-python reschedule_season.py ...    # bulk-reschedule a season when order check suggests it (optional)
-
-python run.py                      # confirm final state
-```
-
-For step-by-step control without the menu, use the standalone scripts under [Advanced / standalone use](#advanced--standalone-use).
-
+| Flag | Purpose |
+| --- | --- |
+| `--show-name NAME` | Show name from watch history CSV (required) |
+| `--season N` | Season number (required) |
+| `--start` / `--end` | Date range `YYYY-MM-DD` (UTC start/end of day) |
