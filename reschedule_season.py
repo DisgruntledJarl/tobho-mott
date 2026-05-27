@@ -3,6 +3,7 @@
 
 import argparse
 import random
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -11,6 +12,11 @@ from trakt.csv_to_python import DEFAULT_CSV, load_rows
 from trakt.episodes import split_first_watch
 from trakt.history import fetch_watch_history
 from trakt.intervals import row_duration, row_title
+
+
+def normalize_show_name(name):
+    """Return lowercase name with punctuation removed for matching."""
+    return re.sub(r"[^\w\s]", "", name.casefold())
 
 
 def parse_date_range(start, end):
