@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Detect overlapping watch intervals and optionally reschedule them on Trakt."""
 
+from trakt.utils import safe_input as input, row_duration, row_interval, row_title
 from trakt.client import TraktRateLimitError, to_trakt_iso, trakt_post
 from trakt.csv_to_python import load_rows
 from trakt.history import fetch_watch_history
-from trakt.intervals import row_duration, row_interval, row_title
-
 
 def detect_conflicts(rows):
     """Return (row_a, row_b) for each pair of overlapping watch intervals."""

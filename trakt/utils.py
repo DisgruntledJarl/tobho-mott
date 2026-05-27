@@ -1,10 +1,18 @@
-"""Watch-interval helpers shared by detect_conflicts."""
+"""utility helpers"""
 
 from datetime import timedelta
+import sys
 
 EPISODE_DURATION = timedelta(hours=1)
 MOVIE_DURATION = timedelta(hours=3)
 
+"""Input Helper to deal with EOF Error"""
+def safe_input(prompt=""):
+    try:
+        return input(prompt)
+    except (EOFError, KeyboardInterrupt):
+        print()
+        sys.exit(0)
 
 def row_duration(row):
     if row["runtime"]:
