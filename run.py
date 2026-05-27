@@ -2,12 +2,12 @@
 """Unified entry point: fetch watch history and run conflict or order checks."""
 
 import argparse
-
 import detect_conflicts
 import detect_order
 from trakt.client import TraktRateLimitError
 from trakt.csv_to_python import DEFAULT_CSV
 from trakt.history import fetch_watch_history, print_fetch_stats
+from trakt.utils import safe_input as input
 
 
 def parse_args(argv=None):
