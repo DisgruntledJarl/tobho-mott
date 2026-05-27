@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from trakt.client import TraktRateLimitError, to_trakt_iso, trakt_post
-from trakt.csv_to_python import DEFAULT_CSV, load_rows
+from trakt.csv_to_python import load_rows
 from trakt.history import fetch_watch_history
 from trakt.utils import row_duration, row_title, safe_input as input
 
@@ -227,7 +227,7 @@ def main():
     parser.add_argument(
         "--show-name",
         required=True,
-        help="Show name from watch history CSV (show_name column)",
+        help="Show name from watch history (show_name column)",
     )
     parser.add_argument("--season", type=int, required=True, help="Season number")
     parser.add_argument(
@@ -236,16 +236,10 @@ def main():
     parser.add_argument(
         "--end", required=True, help="End date (YYYY-MM-DD, UTC end of day)"
     )
-    parser.add_argument(
-        "--csv",
-        type=Path,
-        default=DEFAULT_CSV,
-        help=f"Watch history CSV (default: {DEFAULT_CSV})",
-    )
     args = parser.parse_args()
 
     try:
-        rows = load_rows(args.csv)
+        rows = load_rows()
         show_map = build_show_name_map(rows)
         _, show_id = resolve_show(args.show_name, show_map)
         start_dt, end_dt = parse_date_range(args.start, args.end)
