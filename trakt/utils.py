@@ -32,17 +32,3 @@ def row_title(row):
             f"S{row['season_number']:02d}E{row['episode_number']:02d}"
         )
     return row["movie_title"]
-
-
-def merge_intervals(intervals):
-    """Merge a sorted list of (start, end) tuples into non-overlapping blocks."""
-    if not intervals:
-        return []
-    merged = [intervals[0]]
-    for start, end in intervals[1:]:
-        prev_start, prev_end = merged[-1]
-        if prev_start < end and start < prev_end:
-            merged[-1] = (prev_start, max(prev_end, end))
-        else:
-            merged.append((start, end))
-    return merged
