@@ -130,10 +130,9 @@ def batch_reschedule(episodes, target_times):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--show-id",
-        type=int,
+        "--show-name",
         required=True,
-        help="Trakt show ID from watch history CSV (show_id column)",
+        help="Show name from watch history CSV (show_name column)",
     )
     parser.add_argument("--season", type=int, required=True, help="Season number")
     parser.add_argument(
