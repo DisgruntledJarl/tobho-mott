@@ -7,11 +7,10 @@ import random
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
 from trakt.client import TraktRateLimitError, to_trakt_iso, trakt_post
 from trakt.csv_to_python import DEFAULT_CSV, load_rows
 from trakt.history import fetch_watch_history
-from trakt.intervals import row_duration, row_title
+from trakt.utils import row_duration, row_title, safe_input as input
 
 
 def normalize_show_name(name):
