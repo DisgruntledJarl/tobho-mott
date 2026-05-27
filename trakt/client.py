@@ -165,12 +165,9 @@ def device_login() -> None:
             print(f"Saved TRAKT_ACCESS_TOKEN to {ENV_PATH}")
             return
 
-        if token_response.status_code == 400:
-            pass
         elif token_response.status_code == 429:
             raise SystemExit(RATE_LIMIT_MESSAGE)
-        elif token_response.status_code != 200:
-            token_response.raise_for_status()
+
 
         time.sleep(interval)
 
