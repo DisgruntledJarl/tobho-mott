@@ -1,6 +1,7 @@
 """Fetch Trakt watch history and write to CSV."""
 
 import csv
+import sys
 import time
 
 from trakt.client import TraktRateLimitError, trakt_get
@@ -19,6 +20,33 @@ _FIELDNAMES = [
     "runtime",
     "item_trakt_id",
 ]
+
+
+def _should_show_progress():
+    return True
+
+
+def _emit_fetch_progress(label, item_count=0, page=None, page_count=None):
+    """Write fetch progress to stderr (TTY: in-place; non-TTY: one line per update)."""
+    if not _should_show_progress():
+        return
+    if page is None:
+        message = f"Fetching {label}…"
+    elif page_count is not None:
+        message = f"Fetched {item_count} items: page {page}/{page_count}"
+    else:
+        message = f"Fetched {item_count} items: page {page}"
+    if sys.stderr.isatty():
+        sys.stderr.write(f"\r{message}")
+        sys.stderr.flush()
+    else:
+        print(message, file=sys.stderr)
+
+
+def _clear_progress():
+    if _should_show_progress() and sys.stderr.isatty():
+        sys.stderr.write("\r\033[K")
+        sys.stderr.flush()
 
 
 def _fetch_pages(history_type):
