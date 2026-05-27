@@ -1,6 +1,7 @@
 """Fetch Trakt watch history and write to CSV."""
 
 import csv
+import sys
 import time
 
 from trakt.client import TraktRateLimitError, trakt_get
@@ -21,16 +22,50 @@ _FIELDNAMES = [
 ]
 
 
+def _should_show_progress():
+    return True
+
+
+def _emit_fetch_progress(label, item_count=0, page=None, page_count=None):
+    """Write fetch progress to stderr (TTY: in-place; non-TTY: one line per update)."""
+    if not _should_show_progress():
+        return
+    if page is None:
+        message = f"Fetching {label}…"
+    elif page_count is not None:
+        message = f"Fetched {item_count} items: page {page}/{page_count}"
+    else:
+        message = f"Fetched {item_count} items: page {page}"
+    if sys.stderr.isatty():
+        sys.stderr.write(f"\r{message}")
+        sys.stderr.flush()
+    else:
+        print(message, file=sys.stderr)
+
+
+def _clear_progress():
+    if _should_show_progress() and sys.stderr.isatty():
+        sys.stderr.write("\r\033[K")
+        sys.stderr.flush()
+
+
 def _fetch_pages(history_type):
     page = 1
     items = []
+    _emit_fetch_progress(history_type)
     while True:
         response = trakt_get(
             f"/sync/history/{history_type}",
             {"page": page, "limit": 1000, "extended": "full"},
         )
-        items.extend(response.json())
         page_count = int(response.headers.get("X-Pagination-Page-Count", 1))
+        items.extend(response.json())
+        _emit_fetch_progress(
+            history_type,
+            item_count=len(items),
+            page=page,
+            page_count=page_count,
+        )
         if page >= page_count:
             break
         if page >= 5:
@@ -77,8 +112,11 @@ def fetch_watch_history():
 
     Returns (output_path, stats) where stats has episodes, movies, and shows keys.
     """
-    episode_rows = [_episode_row(item) for item in _fetch_pages("episodes")]
-    movie_rows = [_movie_row(item) for item in _fetch_pages("movies")]
+    try:
+        episode_rows = [_episode_row(item) for item in _fetch_pages("episodes")]
+        movie_rows = [_movie_row(item) for item in _fetch_pages("movies")]
+    finally:
+        _clear_progress()
     rows = episode_rows + movie_rows
     rows.sort(key=lambda r: r["watched_at"])
 
