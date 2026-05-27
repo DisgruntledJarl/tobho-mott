@@ -4,7 +4,7 @@ import csv
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_CSV = Path("data/watch_history.csv")
+DEFAULT_CSV = Path(__file__).parent.parent / "data" / "watch_history.csv"
 
 
 def _parse_dt(value):
