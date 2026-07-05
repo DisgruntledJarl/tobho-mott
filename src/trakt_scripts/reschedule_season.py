@@ -2,63 +2,22 @@
 """Reschedule first-watch episodes for a show season into a date range."""
 
 import argparse
-import difflib
 import random
-import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
 from trakt_scripts.client import TraktRateLimitError, to_trakt_iso, trakt_post
 from trakt_scripts.csv_to_python import load_rows
 from trakt_scripts.history import fetch_watch_history
-from trakt_scripts.utils import row_duration, row_title, safe_input as input
-
-
-def normalize_show_name(name):
-    """Return lowercase name with punctuation removed for matching."""
-    return re.sub(r"[^\w\s]", "", name.casefold())
-
-
-def build_show_name_map(rows):
-    """Return normalized show name -> (original show name, show_id)."""
-    show_map = {}
-    for row in rows:
-        if row["type"] != "episode":
-            continue
-        show_name = row["show_name"]
-        if not show_name:
-            continue
-        show_map[normalize_show_name(show_name)] = (show_name, row["show_id"])
-    return show_map
-
-
-def find_show_matches(query, show_map):
-    """Return (show_name, show_id) candidates: exact, then substring, then fuzzy."""
-    normalized = normalize_show_name(query)
-
-    if normalized in show_map:
-        return [show_map[normalized]]
-
-    # SubString matching if exact match not found
-    # Searches for multiple entries and returns all of them. Only adds to candidates if the value is not already in the set.
-    candidates = []
-    seen_ids = set()
-    for key, value in show_map.items():
-        if normalized in key or key in normalized:
-            show_id = value[1]
-            if show_id not in seen_ids:
-                seen_ids.add(show_id)
-                candidates.append(value)
-    if candidates:
-        return candidates
-
-    # Fuzzy matching
-    for key in difflib.get_close_matches(normalized, show_map, n=5, cutoff=0.6):
-        value = show_map[key]
-        show_id = value[1]
-        if show_id not in seen_ids:
-            seen_ids.add(show_id)
-            candidates.append(value)
-    return candidates
+from trakt_scripts.utils import (
+    build_show_name_map,
+    find_show_matches,
+    row_duration,
+    row_title,
+)
+from trakt_scripts.utils import (
+    safe_input as input,
+)
 
 
 def prompt_show_choice(candidates):
@@ -107,9 +66,7 @@ def parse_date_range(start, end):
 def find_season_rows(rows, show_id, season):
     """Return first-watch episodes for a show, sorted by episode number."""
     matched = [
-        row
-        for row in rows
-        if row["type"] == "episode" and row["show_id"] == show_id
+        row for row in rows if row["type"] == "episode" and row["show_id"] == show_id
     ]
 
     if not matched:
