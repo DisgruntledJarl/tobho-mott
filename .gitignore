@@ -10,6 +10,7 @@ __pycache__/
 # Data files
 *.csv
 !data/.gitkeep # Data directory where generated CSVs are stored
+data/order_exemptions.json
 
 # Markdown
 *.md

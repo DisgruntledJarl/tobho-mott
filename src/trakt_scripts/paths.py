@@ -18,3 +18,4 @@ REPO_ROOT = _repo_root()
 DATA_DIR = REPO_ROOT / "data"
 ENV_PATH = REPO_ROOT / ".env"
 DEFAULT_CSV = DATA_DIR / "watch_history.csv"
+ORDER_EXEMPTIONS = DATA_DIR / "order_exemptions.json"

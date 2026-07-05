@@ -1,0 +1,6 @@
+[
+    { "show": "Show 1" },
+    { "show": "Show 2" },
+    { "show": "Show 3", "season": 1 },
+    { "show": "Show 3", "season": 2 }
+]

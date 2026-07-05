@@ -122,6 +122,16 @@ Prints a summary and writes violations to `data/flagged_order.csv`
 
 When violations exist, the script prints a static `trakt_scripts.reschedule_season` command with placeholders (`SHOW_ID`, `N`, `YYYY-MM-DD`)
 
+Add exemptions to the out of order in data/order_exemptions.json in this format:
+
+```json
+[
+    { "show": "Show 1" },
+    { "show": "Show 2", "season": 1 },
+]
+```
+All seasons of "Show 1" will be exempt from order violations.
+
 **Options:** none (reads `data/watch_history.csv`)
 
 ---
