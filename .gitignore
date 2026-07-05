@@ -1,11 +1,21 @@
-.env
+# Python Build
 __pycache__/
 *.pyc
+*egg-info/
+uv.lock
+pyproject.toml
+
+# Environment
+.env
 .venv/
-venv/
+
+# Data files
 *.csv
-!data/.gitkeep
+!data/.gitkeep # Data directory where generated CSVs are stored
+
+# Markdown
 *.md
 !README.md
-trakt_scripts.egg-info/
-.cursor/
+
+# Config
+CLAUDE.md
