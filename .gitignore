@@ -16,5 +16,6 @@ data/order_exemptions.json
 *.md
 !README.md
 CLAUDE.md
-Plans/
+!Plans/
+Plans/*
 !Plans/ARCHITECTURE.md
