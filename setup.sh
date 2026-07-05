@@ -66,3 +66,4 @@ fi
 
 echo ""
 echo "Setup complete."
+python "$REPO_ROOT/run.py"
