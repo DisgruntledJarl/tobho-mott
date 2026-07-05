@@ -10,7 +10,6 @@ __pycache__/
 # Data files
 *.csv
 !data/.gitkeep # Data directory where generated CSVs are stored
-!Plans/ARCHITECTURE.md
 data/order_exemptions.json
 
 # Markdown
@@ -18,3 +17,4 @@ data/order_exemptions.json
 !README.md
 CLAUDE.md
 Plans/
+!Plans/ARCHITECTURE.md
