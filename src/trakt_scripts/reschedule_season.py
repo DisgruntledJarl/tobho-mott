@@ -4,7 +4,6 @@
 import argparse
 import random
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from trakt_scripts.client import TraktRateLimitError, to_trakt_iso, trakt_post
 from trakt_scripts.csv_to_python import load_rows
