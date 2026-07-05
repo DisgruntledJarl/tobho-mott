@@ -14,9 +14,7 @@ from trakt_scripts.utils import (
     row_duration,
     row_title,
 )
-from trakt_scripts.utils import (
-    safe_input as input,
-)
+from trakt_scripts.utils import safe_input as input
 
 
 def prompt_show_choice(candidates):
