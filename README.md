@@ -127,7 +127,7 @@ Add exemptions to the out of order in data/order_exemptions.json in this format:
 ```json
 [
     { "show": "Show 1" },
-    { "show": "Show 2", "season": 1 },
+    { "show": "Show 2", "season": 1 }
 ]
 ```
 All seasons of "Show 1" will be exempt from order violations.
