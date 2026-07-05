@@ -4,7 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR"
 ENV_FILE="$REPO_ROOT/.env"
+EXEMPTIONS_FILE="$REPO_ROOT/data/order_exemptions.json"
 ENV_EXAMPLE="$REPO_ROOT/.env.example"
+EXEMPTIONS_EXAMPLE="$REPO_ROOT/data/order_exemptions.json.example"
 
 if [[ -z "${VIRTUAL_ENV:-}" ]]; then
   if [[ -d "$REPO_ROOT/.venv" ]]; then
@@ -40,6 +42,11 @@ fi
 if [[ ! -f "$ENV_FILE" ]]; then
   cp "$ENV_EXAMPLE" "$ENV_FILE"
   echo "Created $ENV_FILE from .env.example"
+fi
+
+if [[ ! -f "$EXEMPTIONS_FILE" ]]; then
+  cp "$EXEMPTIONS_EXAMPLE" "$EXEMPTIONS_FILE"
+  echo "Created $EXEMPTIONS_FILE from order_exemptions.json.example"
 fi
 
 get_env() {
