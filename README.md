@@ -1,4 +1,4 @@
-# trakt-scripts
+# tobho-mott
 
 Personal CLI tools for correcting Trakt watch history. Everything lives in the `src/trakt_scripts/` package: shared modules handle API access and CSV I/O, and the analysis/fix tools run as modules (`python -m trakt_scripts.<name>`) against a local snapshot.
 
