@@ -2,8 +2,6 @@
 __pycache__/
 *.pyc
 *egg-info/
-uv.lock
-pyproject.toml
 
 # Environment
 .env
@@ -16,6 +14,5 @@ pyproject.toml
 # Markdown
 *.md
 !README.md
-
-# Config
 CLAUDE.md
+Plans/
