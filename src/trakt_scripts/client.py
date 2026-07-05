@@ -1,18 +1,18 @@
-"""Shared Trakt HTTP client and repo paths."""
+"""Shared Trakt HTTP client."""
 
 from __future__ import annotations
 
 import os
 import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import requests
 from dotenv import load_dotenv, set_key
 from requests import Response
 
-ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+from trakt_scripts.paths import ENV_PATH
+
 load_dotenv(ENV_PATH)
 
 BASE = "https://api.trakt.tv"
@@ -21,7 +21,7 @@ POST_DELAY = 1.0
 LOGIN_TIMEOUT = 60
 
 RATE_LIMIT_MESSAGE = "Rate limited by Trakt. Wait a minute and re-run."
-LOGIN_HINT = "python trakt/client.py"
+LOGIN_HINT = "python -m trakt_scripts.client"
 
 
 class TraktRateLimitError(Exception):

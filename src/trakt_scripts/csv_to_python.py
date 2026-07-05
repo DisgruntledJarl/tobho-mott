@@ -4,7 +4,7 @@ import csv
 from datetime import datetime, timezone
 from pathlib import Path
 
-DEFAULT_CSV = Path(__file__).parent.parent / "data" / "watch_history.csv"
+from trakt_scripts.paths import DEFAULT_CSV
 
 
 def _parse_dt(value):
@@ -28,6 +28,6 @@ def _parse_row(row):
 def load_rows(path=DEFAULT_CSV):
     path = Path(path)
     if not path.exists():
-        raise SystemExit(f"Missing {path}. Run python trakt/history.py first.")
+        raise SystemExit(f"Missing {path}. Run python -m trakt_scripts.history first.")
     with path.open(newline="", encoding="utf-8") as f:
         return [_parse_row(row) for row in csv.DictReader(f)]

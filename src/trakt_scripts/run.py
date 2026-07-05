@@ -2,12 +2,12 @@
 """Unified entry point: fetch watch history and run conflict or order checks."""
 
 import argparse
-import detect_conflicts
-import detect_order
-from trakt.client import TraktRateLimitError
-from trakt.csv_to_python import DEFAULT_CSV
-from trakt.history import fetch_watch_history, print_fetch_stats
-from trakt.utils import safe_input as input
+
+from trakt_scripts import detect_conflicts, detect_order
+from trakt_scripts.client import TraktRateLimitError
+from trakt_scripts.csv_to_python import DEFAULT_CSV
+from trakt_scripts.history import fetch_watch_history, print_fetch_stats
+from trakt_scripts.utils import safe_input as input
 
 
 def parse_args(argv=None):
@@ -24,7 +24,7 @@ def prepare_history(no_fetch):
     if no_fetch:
         if not DEFAULT_CSV.exists():
             raise SystemExit(
-                f"Missing {DEFAULT_CSV}. Run without --no-fetch or run python trakt/history.py first."
+                f"Missing {DEFAULT_CSV}. Run without --no-fetch or run python -m trakt_scripts.history first."
             )
         print(f"Using existing watch history at {DEFAULT_CSV}")
         return

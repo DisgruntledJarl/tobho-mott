@@ -4,8 +4,8 @@ import csv
 import sys
 import time
 
-from trakt.client import TraktRateLimitError, trakt_get
-from trakt.csv_to_python import DEFAULT_CSV
+from trakt_scripts.client import TraktRateLimitError, trakt_get
+from trakt_scripts.csv_to_python import DEFAULT_CSV
 
 # Columns in the final watch history CSV
 _FIELDNAMES = [

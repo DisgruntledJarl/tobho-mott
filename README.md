@@ -1,6 +1,6 @@
 # trakt-scripts
 
-Personal CLI tools for correcting Trakt watch history. A shared `trakt/` package handles API access and CSV I/O; root-level scripts run analysis and fixes against a local snapshot.
+Personal CLI tools for correcting Trakt watch history. Everything lives in the `src/trakt_scripts/` package: shared modules handle API access and CSV I/O, and the analysis/fix tools run as modules (`python -m trakt_scripts.<name>`) against a local snapshot.
 
 All analysis runs offline against `data/watch_history.csv`. API calls happen only during history fetch and when you explicitly approve a fix.
 
@@ -28,7 +28,7 @@ The script:
 
 1. Installs the repo as an editable package (`pip install -e .`)
 2. Copies `.env.example` → `.env` if missing — edit `TRAKT_CLIENT_ID` and `TRAKT_CLIENT_SECRET`, then re-run
-3. Runs `python trakt/client.py` for device login when `TRAKT_ACCESS_TOKEN` is empty
+3. Runs `python -m trakt_scripts.client` for device login when `TRAKT_ACCESS_TOKEN` is empty
 
 Device login flow:
 
@@ -43,7 +43,7 @@ Device login flow:
 When the access token expires:
 
 ```bash
-python trakt/client.py
+python -m trakt_scripts.client
 ```
 
 ---
@@ -53,21 +53,21 @@ python trakt/client.py
 Primary entry point — fetches watch history from Trakt (unless skipped), prints a summary, then offers a menu:
 
 ```bash
-python run.py
-python run.py --no-fetch   # reuse existing data/watch_history.csv (no API call)
+python -m trakt_scripts.run
+python -m trakt_scripts.run --no-fetch   # reuse existing data/watch_history.csv (no API call)
 ```
 
 | Choice | Action |
 | --- | --- |
-| `1` | Check for overlapping watch intervals (same as `detect_conflicts.py`) |
-| `2` | Check for out-of-order episode watches (same as `detect_order.py`) |
+| `1` | Check for overlapping watch intervals (same as `trakt_scripts.detect_conflicts`) |
+| `2` | Check for out-of-order episode watches (same as `trakt_scripts.detect_order`) |
 
-Run from the repo root (paths are relative to the current working directory). The default fetch step requires valid Trakt credentials; `--no-fetch` skips the fetch and uses the local CSV snapshot for menu checks.
+Paths (`data/`, `.env`) resolve relative to the repo root automatically, so the tools work from any working directory. The default fetch step requires valid Trakt credentials; `--no-fetch` skips the fetch and uses the local CSV snapshot for menu checks.
 
 When out-of-order violations are found, option `2` prints a static fix hint with placeholders:
 
 ```bash
-python reschedule_season.py --show-id SHOW_ID --season N --start YYYY-MM-DD --end YYYY-MM-DD
+python -m trakt_scripts.reschedule_season --show-id SHOW_ID --season N --start YYYY-MM-DD --end YYYY-MM-DD
 ```
 
 Replace `SHOW_ID`, `N`, and the dates before running. A one-liner to look up `show_id` from the show name is included in the output.
@@ -83,7 +83,7 @@ Individual scripts remain runnable on their own. Use these when you want a speci
 Every tool reads from a local CSV snapshot. Refresh it with:
 
 ```bash
-python trakt/history.py
+python -m trakt_scripts.history
 ```
 
 Writes `data/watch_history.csv` (episodes and movies, including runtimes when Trakt provides them).
@@ -97,7 +97,7 @@ Re-run after applying fixes or when you want a fresh snapshot.
 Detects overlapping watch intervals — pairs of entries whose computed watch windows overlap (impossible to watch both at once). Prints each pair, then optionally fixes them on Trakt.
 
 ```bash
-python detect_conflicts.py
+python -m trakt_scripts.detect_conflicts
 ```
 
 **Behaviour:**
@@ -115,12 +115,12 @@ python detect_conflicts.py
 Detects out-of-order **first-watch** episodes — entries logged before a narrative predecessor in the same show (within-season or cross-season). Rewatches are ignored.
 
 ```bash
-python detect_order.py
+python -m trakt_scripts.detect_order
 ```
 
 Prints a summary and writes violations to `data/flagged_order.csv`
 
-When violations exist, the script prints a static `reschedule_season.py` command with placeholders (`SHOW_NAME`, `N`, `YYYY-MM-DD`)
+When violations exist, the script prints a static `trakt_scripts.reschedule_season` command with placeholders (`SHOW_ID`, `N`, `YYYY-MM-DD`)
 
 **Options:** none (reads `data/watch_history.csv`)
 
@@ -131,10 +131,10 @@ When violations exist, the script prints a static `reschedule_season.py` command
 Moves an entire season's first-watch episodes into a date range. Episodes stay in narrative order; end times are spread randomly within equal slots across the window. Prints a preview and asks for approval before updating Trakt (two API calls: bulk remove + bulk add).
 
 ```bash
-python reschedule_season.py --show-name "Breaking Bad" --season 1 --start 2020-01-01 --end 2020-12-31
+python -m trakt_scripts.reschedule_season --show-name "Breaking Bad" --season 1 --start 2020-01-01 --end 2020-12-31
 ```
 
-The show name is matched against `show_name` values in `data/watch_history.csv` (case and punctuation are ignored). Partial matches work as it does a fuzzy search. If more than one show matches, you get a numbered list to pick from (or `0` to cancel). After applying, run `detect_conflicts.py` if overlaps may remain.
+The show name is matched against `show_name` values in `data/watch_history.csv` (case and punctuation are ignored). Partial matches work as it does a fuzzy search. If more than one show matches, you get a numbered list to pick from (or `0` to cancel). After applying, run `python -m trakt_scripts.detect_conflicts` if overlaps may remain.
 
 **Options:**
 

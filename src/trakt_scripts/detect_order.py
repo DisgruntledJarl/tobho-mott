@@ -5,10 +5,11 @@ import csv
 from collections import defaultdict
 from pathlib import Path
 
-from trakt.csv_to_python import load_rows
-from trakt.utils import row_title
+from trakt_scripts.csv_to_python import load_rows
+from trakt_scripts.paths import DATA_DIR
+from trakt_scripts.utils import row_title
 
-OUTPUT = Path(__file__).resolve().parent / "data" / "flagged_order.csv"
+OUTPUT = DATA_DIR / "flagged_order.csv"
 
 _CSV_FIELDNAMES = [
     "history_id",
@@ -84,10 +85,10 @@ def main():
     if violations:
         print(
             "\nTo look up show_id:\n"
-            "  python3 -c \"from trakt.csv_to_python import load_rows; "
+            "  python3 -c \"from trakt_scripts.csv_to_python import load_rows; "
             "print(next(r['show_id'] for r in load_rows() if r['show_name']=='SHOW_NAME'))\"\n"
             "\nTo fix an out-of-order season, run:\n"
-            "  python reschedule_season.py --show-id SHOW_ID --season N --start YYYY-MM-DD --end YYYY-MM-DD"
+            "  python -m trakt_scripts.reschedule_season --show-id SHOW_ID --season N --start YYYY-MM-DD --end YYYY-MM-DD"
         )
 
 
