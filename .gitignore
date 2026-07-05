@@ -8,9 +8,9 @@ __pycache__/
 .venv/
 
 # Data files
-*.csv
+data/*
 !data/.gitkeep # Data directory where generated CSVs are stored
-data/order_exemptions.json
+!data/order_exemptions.json.example
 
 # Markdown
 *.md
